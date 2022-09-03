@@ -174,7 +174,10 @@ void test2(string input, string want)
 
 void testLeak()
 {
-	for (int pass = 0; pass < 1000 * 1000 * 1000; pass++)
+	int testamount = 1000 * 1000 * 1000; // super huge takes a long time
+	testamount = 1000 * 1000; 
+
+	for (int pass = 0; pass < testamount; pass++)
 	{
 		string input = "a b c d e f g h a b c d e f g h a b c d e f g h ";
 

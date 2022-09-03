@@ -35,10 +35,11 @@
 *.app
 
 # Executables
-mqtt5nano
-mqtt5nano_test
-slices
+badJsonParser/testBadJson
+
 # libraries are a soft link to ~/Arduino/libraries
 libraries
 
 test_filesystem_local_fs
+
+.DS_Store 
