@@ -15,6 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/** This one is not really a test because it loops forever.
+ *  To really see it work you  should post to knotfree.net mqtt from another 
+ *  client. The topic is 'testtopic'
+ *  
+ *  
+ * 
+ */ 
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -74,30 +82,6 @@ int main()
         return -1;
     }
 
-    //  struct
-    //    addrinfo hints;
-    // bzero((void *)&hints, sizeof(hints));
-    // hints.ai_family = AF_UNSPEC;
-    // hints.ai_socktype = SOCK_STREAM;
-    // hints.ai_protocol = IPPROTO_TCP;
-
-    // char service[6];
-    // bzero(service, sizeof(service));
-    // sprintf(service, "%hu", port_number);
-
-    // struct addrinfo *addrs = 0;
-    // if (getaddrinfo(hostname, service, &hints, &addrs) != 0)
-    // {
-    //     printf("unable to resolve\n");
-    //     return false;
-    // }
-
-    // for(struct addrinfo *addr = addrs; addr != 0; addr = addr->ai_next)
-    // {
-    //     if (connect_to_addr((struct sockaddr*)(addr->ai_sockaddr), addr->ai_addrlen) != 0)
-    //         break;
-    // }
-
     serv_addr.sin_family = AF_INET;
     int port = 1883;
     serv_addr.sin_port = htons(port);
@@ -121,9 +105,6 @@ int main()
         return -1;
     }
 
-    // string hello = "GET / HTTP/1.1\r\nHost: 192.168.86.32r\n\r\n";
-    // char buffer[1024] = {0};
-
     // send it a connect
     // send it a connect
     // send it a connect
@@ -137,11 +118,11 @@ int main()
     sink assemblyBuffer(assemblyArray, 2048);
 
     mqttBuffer1024 result; // just a buffer
-    sinkDrain connDestination;
-    connDestination.dest = result.getSink(); // set up a sink that writes to the buffer
+    SinkDrain connDestination;
+    connDestination.buffer = result.getSink(); // set up a sink that writes to the buffer
 
     slice clientID = slice("client-id-WTF");
-    slice userName = slice("al4n");
+    slice userName = slice("alanwoooo");
     slice passWord = slice(password); // is huge
 
     bool connfail = congen.outputConnect(assemblyBuffer, &connDestination, clientID, userName, passWord);
@@ -149,7 +130,7 @@ int main()
     {
         cout << "generate connect failed\n";
     }
-    slice theConnectBytes = connDestination.dest.getWritten();
+    slice theConnectBytes = connDestination.buffer.getWritten();
 
     int slen = send(sock, theConnectBytes.charPointer(), theConnectBytes.length(), 0);
     cout << "Connect send sent " << slen << "\n";
@@ -159,43 +140,6 @@ int main()
     // // send a subscribe
     // // send a subscribe
     sendSubscribe(sock);
-
-    // // slice s;
-    // mqttPacketPieces subscribe;
-    // subscribe.reset();
-
-    // subscribe.PacketID = 2;
-    // // add props?
-    // // payload is the topic
-    // subscribe.TopicName = slice("testtopic");
-    // subscribe.UserKeyVal[0] = slice("key1");
-    // subscribe.UserKeyVal[1] = slice("val1");
-    // subscribe.UserKeyVal[2] = slice("key2");
-    // subscribe.UserKeyVal[3] = slice("val2");
-    // subscribe.QoS = 1;
-    // subscribe.packetType = CtrlSubscribe;
-
-    // // mqttBuffer1024 buffer;
-    // // sink assemblyBuffer = buffer.getSink();
-
-    // // mqttBuffer1024 result;
-    // sinkDrain subDestinationBytes;
-    // subDestinationBytes.src = result.getSink();
-
-    // bool subFail = subscribe.outputPubOrSub(assemblyBuffer, &subDestinationBytes);
-
-    // slice theSubBytes = subDestinationBytes.src.getWritten();
-
-    // slen = send(sock, theSubBytes.charPointer(), theSubBytes.length(), 0);
-    // cout << " subscribe send sent " << slen << "\n";
-
-    // sleep(5);
-
-    // int sval = select (int nfds, fd_set *read-fds, fd_set *write-fds, fd_set *except-fds, struct timeval *timeout);
-    // printf("sval is %i\n", sval);
-
-    // if (ioctlsocket(sock, FIONBIO, &nonblocking) != 0)
-    //     DieWithError("ioctlsocket() failed");
 
     mqttPacketPieces parser;
 
@@ -289,12 +233,12 @@ bool sendSubscribe( int  sock ) {
     sink assemblyBuffer(assemblyArray, 2048);
 
     // mqttBuffer1024 result;
-    sinkDrain subDestinationBytes;
-    subDestinationBytes.dest = result.getSink();
+    SinkDrain subDestinationBytes;
+    subDestinationBytes.buffer = result.getSink();
 
     bool subFail = subscribe.outputPubOrSub(assemblyBuffer, &subDestinationBytes);
 
-    slice theSubBytes = subDestinationBytes.dest.getWritten();
+    slice theSubBytes = subDestinationBytes.buffer.getWritten();
 
     int slen = send(sock, theSubBytes.charPointer(), theSubBytes.length(), 0);
     cout << " subscribe send sent " << slen << "\n";

@@ -1,32 +1,20 @@
-// Copyright 2020 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
 namespace knotfree
 {
-
     // Slice represents a read only sequence of bytes. The size of the slice, and the underlaying array,
     // are limited to 64k.
     // Some of the methods increment the 'start' as they parse.
-    // We pass them around by value most times. They are *not* null terminated.
+    // We pass them around by value most times. They are NOT null terminated.
 
     // We don't malloc or free or new these ever. They live embedded in structs
-    // or as local variables.
+    // or as local variables. The underlaying buffer is another story.
+    // many times the underlaying buffer is, in fact, a Serial or tcp receive buffer.
 
-    struct sink; // sink is the not-read-only version of slice. defined below
+    struct sink;  // sink is the not-read-only version of slice. defined below
+    struct fount; // fount is like a slice except the readByte is virtual and not just from a buffer.
+    struct drain; // is like a sink except the writeByte is virtual and not from a buffer.
 
     struct slice
     {
@@ -42,10 +30,10 @@ namespace knotfree
         // init with c string
         slice(const char *str)
         {
-            int len = 0; // calc strlen(str);
+            base = str;
+            int len = 0; // calc strlen(str); I don't want to drag in c libs.
             for (; str[len]; len++)
                 ;
-            base = str;
             start = 0;
             end = len;
         }
@@ -58,11 +46,6 @@ namespace knotfree
 
         // Init a slice with the sink ptr,start,end
         slice(sink s);
-        // {
-        //     base = s.base;
-        //     start = s.start;
-        //     end = s.end;
-        // }
 
         bool empty()
         {
@@ -175,7 +158,7 @@ namespace knotfree
             return val;
         };
 
-        // read a 2 byte length and then that many chars.
+        // getLittleFixedLenString reads a 2 byte length and then that many chars.
         // little-endian
         // unless there are not enough then there's a silent fail.
         slice getLittleFixedLenString() // advances start
@@ -192,7 +175,8 @@ namespace knotfree
             start = result.end;
             return result;
         };
-
+        // getBigFixedLenString reads a var len int and then that many chars
+        // return a slice
         slice getBigFixedLenString() // advances start
         {
             slice result;
@@ -207,8 +191,28 @@ namespace knotfree
             start = result.end;
             return result;
         };
+        // equals reurns true if the bytes match, Not the same as
+        // if the slices match.
+        bool equals(slice rhs)
+        {
+            if (length() != rhs.length())
+            {
+                return false;
+            }
+            int len = length();
+            const char *cp1 = base + start;
+            const char *cp2 = rhs.base + rhs.start;
+            for (int i = 0; i < len; i++)
+            {
+                if (cp1[i] != cp2[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-        // return true if this slice has the same bytes as the null terminated str.
+        // equals returns true if this slice has the same bytes as the null terminated str.
         bool equals(const char *str)
         {
             if (empty()) // never ever iterate an empty slice.
@@ -239,6 +243,27 @@ namespace knotfree
             }
             return true;
         }
+        // startsWith returns true if the slice starts with the str
+        bool startsWith(const char *str)
+        {
+            int i = 0;
+            for (i = 0; i < size(); i++)
+            {
+                if (str[i] == 0)
+                {
+                    return true;
+                }
+                if (base[start + i] != str[i])
+                {
+                    return false;
+                }
+            }
+            if (str[i] == 0)
+            {
+                return true;
+            }
+            return false;
+        }
 
         // for debugging.
         // Copy out the slice into the buffer.
@@ -252,33 +277,35 @@ namespace knotfree
     // sink is like a slice except that we can write to it.
     // All the write or put functions you might expect in slice are in here.
     // We write at the start and then increment start until start
-    // gets to end and then we're empty,
+    // gets to end and then we're full.
+    // Note that start is past the bytes written
+    // and the bytes saves are between 0 and start
     struct sink
     {
         char *base;
-        unsigned short int start;
+        unsigned short int start; // write position
         unsigned short int end;
 
         sink()
         {
             base = 0;
         }
-
         sink(char *cP, int amt)
         {
             base = cP;
             start = 0;
             end = amt;
         }
-
-        int size()
+        // sink(slice s) // sorry, slice is read only
+        int remaining()
         {
             return end - start;
         };
-
-        // empty means no remaining space to write
-        // confusingly it's the same as 'full'.
-        bool empty()
+        int amount() // how much has been written
+        {
+            return start;
+        };
+        bool full()
         {
             if (start >= end || base == 0)
             {
@@ -286,62 +313,56 @@ namespace knotfree
             }
             return false;
         }
-
-        // writeByte copies the char into the buffer and advances the start index.
-        // return true if failed.
+        // writeByte copies the char into the buffer and advances the start index. returns ok.
         bool writeByte(char c)
         {
-            bool fail = false;
-            if (empty() == false)
+            bool ok = true;
+            if (full() == false)
             {
                 base[start] = c;
                 start++;
-                return false;
+                return true;
             }
-            fail = true;
-            return fail;
+            return false; // not ok
         }
-
+        // writeBytes calls writeByte returns ok
         bool writeBytes(const char *cP, int amt)
-        {
-            bool fail = false;
+        { // we could just construct a slice and call write. todo
+            bool ok = true;
             for (int i = 0; i < amt; i++)
             {
-                fail = writeByte(cP[i]);
-                if (fail)
-                    return fail;
+                ok = writeByte(cP[i]);
+                if (!ok)
+                    return ok;
             }
-            return fail;
+            return true; // ok
         }
-
+        // returns ok
         bool write(slice s)
         {
-            bool fail = false;
+            bool ok = true;
             if (s.empty())
             {
-                fail = true;
-                return fail;
+                return false; // not ok
             }
             for (int i = s.start; i < s.end; i++)
             {
-                fail |= writeByte(s.base[i]);
+                ok &= writeByte(s.base[i]);
             }
-            return fail;
+            return ok;
         };
-
         bool write(sink s)
         {
             return write(slice(s));
         };
-
         bool writeFixedLenStr(slice s)
         {
-            bool fail = false;
+            bool ok = true;
             int len = s.size();
             if (len + 2 > end)
             {
-                fail = true;
-                return fail;
+                ok = false;
+                return ok;
             }
             writeByte(len >> 8);
             writeByte(len);
@@ -350,23 +371,23 @@ namespace knotfree
                 writeByte(s.base[s.start + i]);
             }
             end += len;
-            return fail;
+            return ok;
         }
-
         // the int needs to be less than 2^21
         // mqtt needs litle endian.
         bool writeBigEndianVarLenInt(int val)
         {
+            bool ok = true;
             if (val >= 128)
             {
                 if (val > 128 * 128)
                 {
-                    writeByte((val >> 14) | 0x80);
+                    ok &= writeByte((val >> 14) | 0x80);
                 }
-                writeByte((val >> 7) | 0x80);
+                ok &= writeByte((val >> 7) | 0x80);
             }
-            writeByte(val & 0x7F);
-            return empty();
+            ok &= writeByte(val & 0x7F);
+            return ok;
         }
         bool writeLittleEndianVarLenInt(int val)
         {
@@ -383,7 +404,7 @@ namespace knotfree
                 }
                 val = val >> 7;
             }
-            return empty();
+            return !full();
         }
         // getWritten return the slice BEFORE the start.  It's what's *been* written.
         slice getWritten()
@@ -400,7 +421,9 @@ namespace knotfree
         }
     };
 
-    // fount can act as an incoming stream of bytes.
+    // fount can act as an incoming stream of bytes. It's very much like a slice except
+    // In Arduino it's a Stream. There is a StreamFount.
+    // the source of the byte stream is virtual. virtual virtual virtual.
     // like a network connection.
     // outside of test it may block.
     // there is an implementation where the bytes come from a slice. See sliceFount
@@ -451,14 +474,17 @@ namespace knotfree
     };
 
     // drain can act as a place to send a stream of bytes.
+    // It's a lot like a sink except the desination is virtual and not just a buffer.
+    // in Arduino it's a Stream. There is a StreamDrain.
     // Like a network connection.
     // Return true when things are failed.
-    // There is an implementation where the drain is a sink.
+    // There is an implementation where the drain is a sink. SinkDrain exists. and CoutDrain
+    // there's  NetDrain in tests.
     struct drain
     {
-        virtual bool writeByte(char c) = 0;
+        virtual bool writeByte(char c) = 0; // returns ok
 
-        // write the bytes of s down the drain.
+        // write the bytes of s down the drain. returns ok
         bool write(slice s)
         {
             if (s.empty())
@@ -467,13 +493,13 @@ namespace knotfree
             }
             for (int i = 0; i < s.size(); i++)
             {
-                bool fail = writeByte(s.base[s.start + i]);
-                if (fail)
+                bool ok = writeByte(s.base[s.start + i]);
+                if (!ok)
                 {
-                    return fail;
+                    return ok;
                 }
             }
-            return false;
+            return true;
         }
         bool write(const char *cP) // c string
         {
@@ -481,25 +507,41 @@ namespace knotfree
             {
                 writeByte(*cP);
             }
-            bool fail = false;
-            return fail;
+            bool ok = true;
+            return ok;
+        }
+        void localWriteHelper( int i ){
+            if ( i == 0 ){
+                return;
+            }
+            localWriteHelper(i/10);
+            int tmp = i%10;
+            writeByte('0' + tmp);
+        }
+        bool writeInt(int i)
+        {
+            if ( i == 0 ){
+                writeByte('0');
+                return true;
+            }
+            if ( i < 0 ){
+               writeByte('-'); 
+               i = -1;
+            }
+            localWriteHelper(i);
+           return true;
         }
 
-        bool write(sink s)
-        { // is this tested?
-            if (s.empty())
+        bool writeBytes(const char *cP, int amt)
+        { // we could just construct a slice and call write. todo
+            bool ok = true;
+            for (int i = 0; i < amt; i++)
             {
-                return false;
+                ok = writeByte(cP[i]);
+                if (!ok)
+                    return ok;
             }
-            for (int i = 0; i < s.size(); i++)
-            {
-                bool fail = writeByte(s.base[s.start + i]);
-                if (fail)
-                {
-                    return fail;
-                }
-            }
-            return false;
+            return ok;
         }
 
         // writeFixedLenStr writes a 2 byte length big endian
@@ -507,34 +549,33 @@ namespace knotfree
         bool writeFixedLenStr(slice str)
         {
             int len = str.size();
-            bool fail = writeByte(len >> 8);
-            if (fail)
+            bool ok = writeByte(len >> 8);
+            if (!ok)
             {
-                return fail;
+                return ok;
             }
-            fail = writeByte(len);
-            if (fail)
+            ok = writeByte(len);
+            if (!ok)
             {
-                return fail;
+                return ok;
             }
             for (int i = 0; i < len; i++)
             {
-                fail = writeByte(str.base[str.start + i]);
-                if (fail)
+                ok = writeByte(str.base[str.start + i]);
+                if (!ok)
                 {
-                    return fail;
+                    return ok;
                 }
             }
             return false;
         }
     };
-
     // a fount that is a slice.
-    struct sliceFount : fount
+    struct SliceFount : fount
     {
         slice src;
-        sliceFount(slice src) : src(src) {}
-        sliceFount() {}
+        SliceFount(slice src) : src(src) {}
+        SliceFount() {}
         virtual unsigned char readByte()
         {
             return src.readByte();
@@ -544,17 +585,17 @@ namespace knotfree
             return src.empty();
         }
     };
-
     // a drain that is a sink.
     // writes to this drain are written to the drain's buffer.
-    struct sinkDrain : drain
-    {
-        sink dest;
-        bool writeByte(char c) override
-        {
-            return dest.writeByte(c);
-        };
-    };
+    // struct SinkDrain : drain
+    // {
+    //     sink dest;
+    //     // returns ok
+    //     bool writeByte(char c) override
+    //     {
+    //         return dest.writeByte(c);
+    //     };
+    // };
 
     // sliceResult is for when we want to return slice,char
     // which requires a struct in C++
@@ -567,7 +608,6 @@ namespace knotfree
             error = 0;
         }
     };
-
     // intResult is for when we want to return int,char
     struct intResult
     {
@@ -579,4 +619,44 @@ namespace knotfree
         }
     };
 
+    struct SinkDrain : drain // for the tests output to a buffer
+    {
+        sink buffer;
+        SinkDrain() {}
+        SinkDrain(char *cP, int len)
+        {
+            buffer.base = cP;
+            buffer.start = 0;
+            buffer.end = len - 1;
+        }
+
+        bool writeByte(char c) override
+        {
+            return buffer.writeByte(c);
+        };
+
+        void reset()
+        {
+            buffer.reset();
+        }
+        slice getWritten()
+        {
+            return buffer.getWritten();
+        }
+    };
 } // namespace knotfree
+
+// Copyright 2020 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.

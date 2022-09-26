@@ -1,17 +1,3 @@
-// Copyright 2020 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "mqtt5nano.h"
 #include "knotbase64.h"
@@ -19,6 +5,7 @@
 namespace knotfree
 {
 
+    // FIXME: return ok, not fail.
     bool mqttPacketPieces::parse(const slice body, const unsigned char _packetType, const int len)
     {
         bool fail = false;
@@ -56,7 +43,7 @@ namespace knotfree
             if (props.size())
             {
                 int userIndex = 0;
-                int maxUserIndex = UserKeyVal_len();
+                int maxUserIndex = userKeyValLen;
                 // parse the props
                 slice ptmp = props;
                 while (ptmp.empty() == false)
@@ -133,7 +120,7 @@ namespace knotfree
     // and that makes them 'empty'.
     void mqttPacketPieces::reset()
     {
-        for (int i = 0; i < UserKeyVal_len(); i++)
+        for (int i = 0; i < userKeyValLen; i++)
         {
             UserKeyVal[i].base = 0;
         }
@@ -153,19 +140,23 @@ namespace knotfree
         // the problem is that the parts have variable length and we don't know
         // what it is until we output and then go back and patch it.
         // Since the var len can be as long as 3 bytes we have to leave
-        // some space at the beginning of each segment.
+        // some space at the end of each segment for the length of the next.
 
         //  setby caller:
         packetType = CtrlConn;
         QoS = 0;
 
-        sink fixedHeader = assemblyBuffer;
+        slice fixedHeader = assemblyBuffer;
+        fixedHeader.start = assemblyBuffer.start;
+       
         assemblyBuffer.writeByte(char(packetType * 16) + (QoS * 2));
         fixedHeader.end = assemblyBuffer.start;
         //
         assemblyBuffer.start += 4; // leave some space
         //
-        sink varHeader = assemblyBuffer;
+        slice varHeader = assemblyBuffer;
+        varHeader.start = assemblyBuffer.start;
+
         assemblyBuffer.writeByte(0); // todo: shorten this.
         assemblyBuffer.writeByte(4);
         assemblyBuffer.writeByte('M');
@@ -183,7 +174,9 @@ namespace knotfree
         //
         assemblyBuffer.start += 4; // leave some space
         //
-        sink payload = assemblyBuffer;
+        slice payload = assemblyBuffer;
+        payload.start = assemblyBuffer.start;
+
         assemblyBuffer.writeFixedLenStr(clientID);
         assemblyBuffer.writeFixedLenStr(user);
         assemblyBuffer.writeFixedLenStr(pass);
@@ -192,13 +185,13 @@ namespace knotfree
         // now the body length
         // at the tail of fixedHeader
         int bodylen = varHeader.size() + payload.size();
-        sink tmp = fixedHeader;
+        sink tmp = assemblyBuffer;      
         tmp.start = fixedHeader.end;
         tmp.end = tmp.start + 4;
         tmp.writeLittleEndianVarLenInt(bodylen);
         fixedHeader.end = tmp.start;
 
-        if (assemblyBuffer.empty() == true)
+        if (assemblyBuffer.full() == true)
         {
             return true; // failed
         }
@@ -229,14 +222,16 @@ namespace knotfree
             TopicName.base = 0;
         }
 
-        sink fixedHeader = assemblyBuffer;
+        slice fixedHeader = assemblyBuffer;
+        fixedHeader.start = assemblyBuffer.start;
 
         assemblyBuffer.writeByte(char(packetType * 16) + (QoS * 2));
         fixedHeader.end = assemblyBuffer.start;
         //
         assemblyBuffer.start += 4; // leave some space
         //
-        sink varHeader = assemblyBuffer;
+        slice varHeader = assemblyBuffer;
+         varHeader.start = assemblyBuffer.start;
         if (packetType == CtrlPublish)
         {
             assemblyBuffer.writeFixedLenStr(TopicName);
@@ -247,13 +242,14 @@ namespace knotfree
         //
         assemblyBuffer.start += 4; // leave some space
         //
-        sink props = assemblyBuffer;
+        slice props = assemblyBuffer;
+         props.start = assemblyBuffer.start;
         if (RespTopic.empty() == false)
         {
             assemblyBuffer.writeByte(propKeyRespTopic);
             assemblyBuffer.writeFixedLenStr(RespTopic);
         }
-        for (int i = 0; i < UserKeyVal_len(); i += 2)
+        for (int i = 0; i < userKeyValLen; i += 2)
         {
             if (UserKeyVal[i].empty() == false)
             {
@@ -274,22 +270,20 @@ namespace knotfree
         // put the lengths in.
         // put the props len at the tail of varHeader
         int propslen = props.size();
-        sink tmp = varHeader;
+        sink tmp= assemblyBuffer;
         tmp.start = varHeader.end;
-        tmp.end = tmp.start + 4;
         tmp.writeLittleEndianVarLenInt(propslen);
         varHeader.end = tmp.start;
 
         // now the body length
         // at the tail of fixedHeader
         int bodylen = varHeader.size() + props.size() + payloadSize;
-        tmp = fixedHeader;
+     
         tmp.start = fixedHeader.end;
-        tmp.end = tmp.start + 4;
         tmp.writeLittleEndianVarLenInt(bodylen);
         fixedHeader.end = tmp.start;
 
-        if (assemblyBuffer.empty() == true)
+        if (assemblyBuffer.full() == true)
         {
             return true; // failed
         }
@@ -315,7 +309,7 @@ namespace knotfree
     // return a value if key found else return a 'done' slice.
     slice mqttPacketPieces::findKey(const char *key)
     {
-        int size = UserKeyVal_len();
+        int size = userKeyValLen;
         for (int i = 0; i < size; i += 2)
         {
             slice s = UserKeyVal[i];
@@ -408,3 +402,19 @@ namespace knotfree
     };
 
 } // namespace knotfree
+
+// Copyright 2020,2021,2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+

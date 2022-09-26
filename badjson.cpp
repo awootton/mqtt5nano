@@ -1,17 +1,3 @@
-// Copyright 2022 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "badjson.h"
 
@@ -21,7 +7,8 @@
 
 namespace badjson
 {
-    bool getJSONinternal(Segment &s, sink &dest, bool isArray); // below
+
+    bool getJSONinternal(Segment &s, drain &dest, bool isArray);
 
     struct Chopper
     { // these are really just glorified local variables.
@@ -101,7 +88,7 @@ namespace badjson
                     }
                 }
                 start = i; // the beginning of our 'token'
-                           // switch ?
+                           // use switch ?
                 if (r == closer)
                 {
                     return ResultsTriplette(front, i, 0);
@@ -220,7 +207,7 @@ namespace badjson
 
                     if (results.error)
                     {
-                        results.i += i; // atw fixme???
+                        results.i += i; // atw fixme
                         return results;
                     }
                     i = i + results.i;
@@ -339,17 +326,17 @@ namespace badjson
         // btw. Since we don't use the i in the ResultsTriplette we could make another type.
     }
 
-    bool Segment::GetQuoted(sink &s)
+    bool Segment::GetQuoted(drain &s)
     {
         return true;
     }
 
-    bool Segment::Raw(sink &s)
+    bool Segment::Raw(drain &s)
     {
         return true;
     }
 
-    bool Parent::GetQuoted(sink &s)
+    bool Parent::GetQuoted(drain &s)
     {
         bool ok = true;
         if (children)
@@ -359,7 +346,7 @@ namespace badjson
         return ok;
     }
 
-    bool Parent::Raw(sink &s)
+    bool Parent::Raw(drain &s)
     {
         bool ok = true;
         if (children)
@@ -370,7 +357,7 @@ namespace badjson
     }
 
     //
-    bool xxxxGetRawString(RuneArray &b, sink &s)
+    bool xxxxGetRawString(RuneArray &b, drain &s)
 
     // I expect \a to become \a and \"  to become "
     // so this is not right
@@ -433,7 +420,7 @@ namespace badjson
     }
 
     // EscapeDoubleQuotes outputs the string with all the \ and " having a \ before them
-    void EscapeDoubleQuotes(RuneArray &b, sink &s)
+    void EscapeDoubleQuotes(RuneArray &b, drain &s)
     {
         const char *cP = b.input.base;
         int i = b.input.start;
@@ -455,7 +442,7 @@ namespace badjson
     // EscapeDoubleQuotesUnSingle unescapes all the \' and escapes all the " and \
     // todo make combined routine to do EscapeDoubleQuotes depending on flag.
     // to save code.
-    void EscapeDoubleQuotesUnSingle(RuneArray &b, sink &s)
+    void EscapeDoubleQuotesUnSingle(RuneArray &b, drain &s)
     {
         const char *cP = b.input.base;
         int i = b.input.start;
@@ -479,7 +466,7 @@ namespace badjson
     }
 
     // String returns the JSON string. That is, it's double quoted and escaped.
-    bool RuneArray::GetQuoted(sink &s)
+    bool RuneArray::GetQuoted(drain &s)
     {
         s.writeByte('"');
         if (this->theQuote == '"')
@@ -503,16 +490,17 @@ namespace badjson
             }
             else
             {
-                s.write(input);
+                bool ok = s.write(input);
             }
         }
-        s.writeByte('"');
-        bool ok = !s.empty();
+        bool ok = s.writeByte('"');
         return ok;
     }
 
+    // FIXME: these are not finished
+
     // returns the unescaped string
-    bool RuneArray::Raw(sink &s)
+    bool RuneArray::Raw(drain &s)
     {
         if (this->theQuote == '"')
         {
@@ -537,36 +525,39 @@ namespace badjson
         if (!this->theQuote)
         {
             s.write(input);
-            return !s.empty();
+            return true; // !s.full();
         }
 
         return true;
     }
 
-    bool Base64Bytes::GetQuoted(sink &s)
+    bool Base64Bytes::GetQuoted(drain &s)
     {
         return true;
     }
 
-    bool Base64Bytes::Raw(sink &s)
+    bool Base64Bytes::Raw(drain &s)
     {
         return true;
     }
 
-    bool HexBytes::GetQuoted(sink &s)
+    bool HexBytes::GetQuoted(drain &s)
     {
         return true;
     }
 
-    bool HexBytes::Raw(sink &s)
+    bool HexBytes::Raw(drain &s)
     {
         return true;
     }
 
     // expresses a list of Segment's as JSON, Is the String() of the Parent object.
-    bool getJSONinternal(Segment &s, sink &dest, bool isArray)
+    bool getJSONinternal(Segment &s, drain &dest, bool isArray)
     {
+        // what if s is null ?
+        // eg. for debugging dest.write("in getJSONinternal\n");
         char oddDelimeter = ',';
+        bool isok = true;
         if (isArray)
         {
             dest.writeByte('[');
@@ -576,10 +567,10 @@ namespace badjson
             dest.writeByte('{');
             oddDelimeter = ':';
         }
-        if (dest.empty())
-        {
-            return false;
-        }
+        // if (dest.full()) // fixme
+        // {
+        //     return false;
+        // }
         int i;
         Segment *child = &s;
         for (i = 0; child != nullptr; child = child->Next())
@@ -611,12 +602,12 @@ namespace badjson
         {
             dest.writeByte('}');
         }
-        return !dest.empty();
+        return true; // fixme collect actual errors
     }
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // todo: rename to ToJsString
-    bool ToString(Segment &segment, sink &dest)
+    bool ToString(Segment &segment, drain &dest)
     {
         bool ok = getJSONinternal(segment, dest, true);
         return ok;
@@ -665,3 +656,19 @@ namespace badjson
     }
 
 } // namespace
+
+
+// Copyright 2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.

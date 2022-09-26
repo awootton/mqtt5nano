@@ -1,32 +1,15 @@
-// Copyright 2022 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-// Headers? we don't need no stinking headers.
-
-// #if ARDUINO >= 100
-//         // include somwthing that defines F
-//         // FIXME:
-// #else
-// #define F(a) a
-// #endif
 
 namespace base64
 {
+    // this name is allowed:
+    // ABCD*FGHI&JLMN^PQRST%XYZabcdefghijk#yz0@123456789-aaaa.xyz
+    // But this one is not 
+    // A_CD*FGHI&JLMN^PQRST%XYZabcdefghijk#yz0@123456789-aaaa.xyz
+    // 
     // TODO: use F to put this in flash space
     // or, since it's const, is it not already 
-    // in code space?  
+    // in code space?  ??
+
     const unsigned char *encodeURL = (unsigned char *)("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
     //                   encodeStd =                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -429,3 +412,19 @@ namespace utf8
     }
 
 } // namespace
+
+// Copyright 2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+

@@ -1,0 +1,223 @@
+#pragma once
+
+#include "WiFiCommands.h"
+// #include "commandLine.h"
+// #include "EepromItem.h"
+// #include "timedItem.h"
+
+#include "knotWiFi.h"
+// #include "knotmDNS.h"
+
+#include "httpConverter.h"
+#include "streamReader.h"
+
+namespace knotfree
+{
+
+    /** WebServer is not a typical web server. Right now it only accepts GET
+     * and it simply removes the '/' from the path and then passes that to the usual
+     * command handling chain here.
+     */
+    struct WebServer
+    {
+        WiFiServer server; //(80);
+        bool didServerInit = false;
+
+        // can we afford 4k? Multiple clients doesn't work. 
+        //static const int maxClients = 4;  // should be enough.?
+        static const int buffSize = 1024; // should be enough.?
+        WiFiClient client;
+        // struct bb
+        // {
+        //     char buf[buffSize];
+        // };
+        char buffer;// s[maxClients]; // [maxClients][buffSize];
+        sink sink;
+        //bool clientconnected[maxClients];
+
+        WebServer() : server(80)
+        {
+            for (int i = 0; i < maxClients; i++)
+            {
+                sinks[i].base = buffers[i].buf;
+                sinks[i].start = 0;
+                sinks[i].end = buffSize;
+                clientconnected[i] = false;
+            }
+        }
+        void serviceClients(class Stream &s)
+        {
+            // service the clients.
+            for (int i = 0; i < maxClients; i++)
+            {
+                if (clients[i].connected())
+                {
+                    if (!clientconnected[i])
+                    {
+                        s.print("newly connected ");
+                        s.println(i);
+                        clientconnected[i] = true;
+                    }
+                    int charMax = 32;
+                    WiFiClient &client = clients[i];
+                    while (charMax && clients[i].available() > 0)
+                    {
+                        charMax--;
+                        if ((sinks[i].start % 16) == 0)
+                        {
+                            s.print(i);
+                        }
+                        char c = clients[i].read();
+                        sinks[i].writeByte(c);
+                        // if (i == 99)
+                        // {
+                        //     sinks[i].writeByte(0);
+                        //     s.println(sinks[i].base);
+                        //     sinks[i].start--;
+                        // }
+                        if (ParsedHttp::isWholeRequest(sinks[i]))
+                        {
+                            // got one !!
+                            s.print("got http ");
+                            s.println(i);
+                            // I'm gonna need a buffer
+                            char *buffer = new char[4096];
+                            SinkDrain response(buffer, 4096);
+
+                            ParsedHttp parsed;
+                            bool ok = parsed.convert(sinks[i]);
+                            if (ok)
+                            {
+                                s.print("parsed ok");
+                                s.print(i);
+                                StreamDrain dr(s);
+                                parsed.command->GetQuoted(dr);
+                                s.println();
+
+                                // sinks[i].writeByte(0);
+                                // s.println(sinks[i].base);
+                                // sinks[i].start--;
+                            }
+                            else
+                            {
+                                s.print("parsed FAIL");
+                                s.println(i);
+                            }
+                            // pass to execute
+                            // process(parsed.command,parsed.params,response);
+
+                            // call command processing instead of this
+                            response.write("this would be the reply");
+                            int responseLen = response.buffer.start;
+                            response.writeByte((char)0);
+
+                            client.write("HTTP/1.1 200 OK\r\n");
+                            client.write("Content-Length: ");
+                            client.write(responseLen);
+                            client.write("\r\n");
+                            client.write("Content-Type: text/plain\r\n");
+                            client.write("Connection: Closed\r\n");
+                            client.write("\r\n");
+
+                            // client.setNoDelay(true);
+                            client.write(buffer);
+
+                            client.flush();
+                            client.stop();
+                            delete[] buffer;
+                            // delete parsed.command;
+                            // delete parsed.params;
+
+                            sinks[i].start = 0; // reset
+                        }
+                    }
+                }
+                else
+                {
+                    if (clientconnected[i])
+                    {
+                        s.print("UN connected ");
+                        s.println(i);
+                        clientconnected[i] = false;
+                    }
+                }
+            }
+        }
+
+        void loop(long now, class Stream &s)
+        {
+            if (connected)
+            {
+                // open a listener socket
+                if (!didServerInit)
+                {
+                    server.begin();
+                    didServerInit = true;
+                    s.println("server begin");
+                }
+                bool anyConnected = false;
+                for (int i = 0; i < maxClients; i++)
+                {
+                    if ((clients[i].connected()))
+                    {
+                        anyConnected = true;
+                        break;
+                    }
+                }
+                if (!anyConnected)
+                {
+                    WiFiClient client = server.available(); // does it new these?
+                    if (client.connected())
+                    {
+                        s.println("new client.connected");
+                        // we have a new one
+                        bool found = false;
+                        for (int i = 0; i < maxClients; i++)
+                        {
+                            if (clients[i] == client)
+                            {
+                                s.print("found ");
+                                s.println(i);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            for (int i = 0; i < maxClients; i++)
+                            {
+                                if (!(clients[i].connected()))
+                                {
+                                    clients[i] = client;
+                                    s.print("added to slot ");
+                                    s.println(i);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                serviceClients(s);
+            }
+            else
+            {
+                // s.println("server gave us an unconnected Client !!! ");
+            }
+        }
+    };
+}
+
+// Copyright 2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.

@@ -106,7 +106,7 @@ void testParseMisc()
     mqttBuffer1024 parserBuffer; // for use by the parser.
 
     mqttPacketPieces parser; // the parser.
-    sliceFount net;
+    SliceFount net;
 
     const char *pubbytes = "200600000322000a";// this is NOT a pub
 
@@ -171,8 +171,8 @@ void testGenerateConnect()
     sink buffersink = buffer.getSink();
 
     mqttBuffer1024 result;
-    sinkDrain netDrain;
-    netDrain.dest = result.getSink();
+    SinkDrain netDrain;
+    netDrain.buffer = result.getSink();
 
     slice clientID = slice("client-id-uwjnbnegfgtwfqk");
     slice userName = slice("abc");
@@ -180,7 +180,7 @@ void testGenerateConnect()
 
     bool ok = congen.outputConnect(buffersink, &netDrain, clientID, userName, passWord);
 
-    slice rsl = netDrain.dest.getWritten();
+    slice rsl = netDrain.buffer.getWritten();
     char tmpbuffer[1024];
 
     // these bytes came from gmqtt and were tested on mosquitto.
@@ -218,12 +218,12 @@ void testGeneratePublish()
     sink buffersink = buffer.getSink();
 
     mqttBuffer1024 result;
-    sinkDrain netDrain;
-    netDrain.dest = result.getSink();
+    SinkDrain netDrain;
+    netDrain.buffer = result.getSink();
 
     bool ok = pubgen.outputPubOrSub(buffersink, &netDrain);
 
-    slice rsl = netDrain.dest.getWritten();
+    slice rsl = netDrain.buffer.getWritten();
     char tmpbuffer[1024];
 
     // should be:
@@ -260,12 +260,12 @@ void testGenerateSubscribe()
     sink assemblyBuffer = buffer.getSink();
 
     mqttBuffer1024 result;
-    sinkDrain netDrain;
-    netDrain.dest = result.getSink();
+    SinkDrain netDrain;
+    netDrain.buffer = result.getSink();
 
     bool ok = subscribe.outputPubOrSub(assemblyBuffer, &netDrain);
 
-    slice rsl = netDrain.dest.getWritten();
+    slice rsl = netDrain.buffer.getWritten();
     char tmpbuffer[1024];
 
     //rsl.printhex();
@@ -287,7 +287,7 @@ void testParsePublish()
 
     mqttBuffer1024 testbuffer;
 
-    sliceFount net;
+    SliceFount net;
     net.src = testbuffer.loadHexString(pubbytes);
 
     char tmp[256];
@@ -380,7 +380,7 @@ void testParsePublish2()
 
     mqttBuffer1024 testbuffer;
 
-    sliceFount net;
+    SliceFount net;
     net.src = testbuffer.loadHexString(pubbytes);
 
     char tmp[2560];

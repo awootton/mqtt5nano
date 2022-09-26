@@ -29,12 +29,16 @@
 
 #include <stdio.h>
 
+using namespace knotfree; // we'll use slices
+
 using namespace std;
 using namespace badjson;
 
 char buffer[4 * 1024];
 char buffer2[4 * 1024];
-sink dest = sink(buffer, sizeof(buffer));
+//sink dest = sink(buffer, sizeof(buffer));
+
+SinkDrain dest(buffer2,sizeof(buffer));
 
 void test1(string input, string want); // below
 
@@ -46,6 +50,16 @@ void suite1(); // below
 
 int main()
 {
+
+	// test the getJSONinternal and the various Raw and GetQuoted
+	const char *inP = "abc def";
+	ResultsTriplette res = Chop(inP, strlen(inP));
+	dest.buffer.reset();
+	badjson::ToString(*res.segment,dest);//
+	dest.writeByte(0);
+	cout << "getJSONinternal returned " << dest.buffer.base << "\n";
+
+	// TODO: test the parent, hex and base64 types.
 
 	test2("\"a b c\"", "[a b c]");
 	test2("a b c", "[a b c]");
@@ -97,7 +111,6 @@ void suite1()
 
 void test1(string input, string want)
 {
-
 	const char *inP = input.c_str();
 
 	ResultsTriplette res = Chop(inP, input.length());

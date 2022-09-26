@@ -1,17 +1,3 @@
-// Copyright 2022 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
@@ -21,7 +7,6 @@ using namespace knotfree; // we'll use slices
 
 namespace badjson
 {
-
     struct ResultsTriplette;// below
 
     // Chop is how we use the badjson parser.
@@ -50,10 +35,10 @@ namespace badjson
 
         // these return false if it failed.
         // aka they return if it's ok.
-        virtual bool GetQuoted(sink &s);
-        virtual bool Raw(sink &s);
+        virtual bool GetQuoted(drain &s);
+        virtual bool Raw(drain &s);
         virtual Segment *GetChildren(); // always nullptr unless parent
-        virtual bool WasArray();        // if parent
+        virtual bool WasArray();        // if parent true means it was [] and false means {} 
     };
 
     // Parent has a sub-list
@@ -74,8 +59,8 @@ namespace badjson
             }
         };
 
-        bool GetQuoted(sink &s) override;
-        bool Raw(sink &s) override;
+        bool GetQuoted(drain &s) override;
+        bool Raw(drain &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -98,8 +83,8 @@ namespace badjson
         virtual ~RuneArray(){};
 
         // returns false if not ok.
-        bool GetQuoted(sink &s) override;
-        bool Raw(sink &s) override;
+        bool GetQuoted(drain &s) override;
+        bool Raw(drain &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -108,8 +93,8 @@ namespace badjson
     {
         Base64Bytes() {}
         virtual ~Base64Bytes(){};
-        bool GetQuoted(sink &s) override;
-        bool Raw(sink &s) override;
+        bool GetQuoted(drain &s) override;
+        bool Raw(drain &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -118,8 +103,8 @@ namespace badjson
     {
         HexBytes(){}
          virtual ~HexBytes(){};
-        bool GetQuoted(sink &s) override;
-        bool Raw(sink &s) override;
+        bool GetQuoted(drain &s) override;
+        bool Raw(drain &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -137,8 +122,27 @@ namespace badjson
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // evrything is double quoted.
-    bool ToString(Segment &segment, sink &dest); // in the cpp
+    bool ToString(Segment &segment, drain &dest); // in the cpp
 
     typedef unsigned char rune;
 
+    // getJSONinternal will write the whole thing in json format. TODO: rename
+    // use ToString instead
+    // bool getJSONinternal(Segment &s, drain &dest, bool isArray);
+
 } // namespace badjson
+
+// Copyright 2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.

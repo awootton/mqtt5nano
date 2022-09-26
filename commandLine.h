@@ -1,3 +1,47 @@
+
+#pragma once
+
+#include "badjson.h"
+
+/** Command is the base class for all the command handlers.
+ * All you have to do is declare one and it automatically gets
+ * linked in with the rest of them.
+ */  
+namespace knotfree
+{
+    extern int commandsServed; 
+    extern long latestNowMillis;
+
+    struct Command // the virtual base class. Aka the interface.
+    {
+        Command *next;
+        const char *name = "";
+        const char *description = "";
+        badjson::Segment *parsed = nullptr;
+
+        Command();
+        Command(const char *name, const char *decription);
+        void SetName(const char *name)
+        {
+            this->name = name;
+            parseTheName();
+        }
+        void SetDescription(const char *desc)
+        {
+            this->description = desc;
+        }
+        // params are key val key val etc.
+        virtual void execute(badjson::Segment *words,badjson::Segment *params, drain &out);
+        virtual void init(){};
+        void parseTheName();// since the name can be several words, chop it up
+    };
+
+    // serial and now?
+    void process(badjson::Segment *words, badjson::Segment *params,drain &out);
+
+    Command * getHead();
+}
+
 // Copyright 2022 Alan Tracey Wootton
 //
 // This program is free software: you can redistribute it and/or modify
@@ -12,32 +56,3 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#pragma once
-
-#include "badjson.h"
-
-namespace knotfree
-{
-    struct Command // the virtual base class. Aka the interface.
-    {
-        Command *next;
-        const char *name = "";
-        const char *description = "";
-
-        Command();
-        Command(const char *name, const char *decription);
-        void SetName(const char *name)
-        {
-            this->name = name;
-        }
-        void SetDescription(const char *desc)
-        {
-            this->description = desc;
-        }
-        virtual void execute(badjson::Segment *words, drain &out);
-    };
-
-    void process(badjson::Segment *words, drain &out);
-
-}

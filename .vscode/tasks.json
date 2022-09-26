@@ -9,16 +9,14 @@
                 "-std=c++17",
                 "-stdlib=libc++",
                 "-g",
-                "${workspaceFolder}/*.cpp", 
+                "${workspaceFolder}/*.cpp",
                 "-g",
-                "${fileDirname}/${fileBasenameNoExtension}.cpp", 
+                "${fileDirname}/${fileBasenameNoExtension}.cpp",
                 "-I",
                 "${workspaceFolder}",
-                "-I",
-                "/Users/awootton/Arduino/libraries/ArduinoJson/src",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
-               
+
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

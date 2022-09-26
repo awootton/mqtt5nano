@@ -1,17 +1,3 @@
-// Copyright 2020 Alan Tracey Wootton
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
@@ -33,14 +19,21 @@ namespace knotfree
 
         slice RespTopic;     // one prop
         slice CorrelationData;
-        slice UserKeyVal[8]; // user props. 4 pair max. no hash table here.
-        // ignoring the rest of the props.
+        static const int userKeyValLen = 16;
+        slice UserKeyVal[userKeyValLen]; // user props. 8 pairs max. no hash table.
+        // ignore additional props.
+        // TODO: make UserKeyVal into the usual badjson:Segment linked list. 
+        // however, then  we would have to free the list.
 
         unsigned short int PacketID; // not a nonce
-        char QoS;                    // used by sub, parsed
+        char QoS;                    // used by sub, parsed. not implemented
         unsigned char packetType;
 
         slice props; // the whole properties block.
+
+        mqttPacketPieces(){
+            reset();
+        }
 
         // zero the slices before parse
         void reset();
@@ -57,10 +50,10 @@ namespace knotfree
         // return a value if key found else return a 'done' slice.
         slice findKey(const char *key);
 
-        int UserKeyVal_len()
-        {
-            return *(&UserKeyVal + 1) - UserKeyVal;
-        }
+        // int UserKeyVal_len()
+        // {   // sorry about the C++'ism. Returns the length of the UserKeyVal array. ie 16 
+        //     return *(&UserKeyVal + 1) - UserKeyVal;
+        // }
     };
 
     /** These are really just for utility
@@ -105,7 +98,6 @@ namespace knotfree
     {
     private:
         char buffer[1024];
-
     public:
         mqttBuffer1024() : mqttBuffer(buffer, 1024)
         {
@@ -162,3 +154,19 @@ namespace knotfree
     };
 
 } // namespace knotfree
+
+// Copyright 2020-2022 Alan Tracey Wootton
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
