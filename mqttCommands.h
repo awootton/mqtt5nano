@@ -10,7 +10,7 @@
 
 #include "knotbase64.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     /** Open a tcp socket (or, better todo: a tls socket ).

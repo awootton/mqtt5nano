@@ -1,7 +1,7 @@
 
 #pragma once
 
-namespace knotfree
+namespace mqtt5nano
 {
     // Slice represents a read only sequence of bytes. The size of the slice, and the underlaying array,
     // are limited to 64k.
@@ -13,7 +13,7 @@ namespace knotfree
     // many times the underlaying buffer is, in fact, a Serial or tcp receive buffer.
 
     struct sink;  // sink is the not-read-only version of slice. defined below
-    struct fount; // fount is like a slice except the readByte is virtual and not just from a buffer.
+    //struct fount; // fount is like a slice except the readByte is virtual and not just from a buffer.
     struct drain; // is like a sink except the writeByte is virtual and not from a buffer.
 
     struct slice
@@ -427,51 +427,51 @@ namespace knotfree
     // like a network connection.
     // outside of test it may block.
     // there is an implementation where the bytes come from a slice. See sliceFount
-    struct fount
-    {
-        virtual unsigned char readByte()
-        {
-            return 0;
-        }
-        virtual bool empty()
-        {
-            return true;
-        }
-        int getBigEndianVarLenInt()
-        {
-            int val = 0;
-            int i = 0;
-            unsigned char tmp;
-            do
-            {
-                tmp = readByte();
-                i++;
-                val = (val << 7) | (tmp & 0x7F);
-                if (i == 3)
-                {
-                    break;
-                }
-            } while (tmp >= 128);
-            return val;
-        };
-        int getLittleEndianVarLenInt()
-        {
-            int val = 0;
-            int i = 0;
-            unsigned char tmp;
-            do
-            {
-                tmp = readByte();
-                val += int(tmp & 0x7F) << (i * 7);
-                i++;
-                if (i == 3)
-                {
-                    break;
-                }
-            } while (tmp >= 128);
-            return val;
-        };
-    };
+    // struct fount
+    // {
+    //     virtual unsigned char readByte()
+    //     {
+    //         return 0;
+    //     }
+    //     virtual bool empty()
+    //     {
+    //         return true;
+    //     }
+    //     int getBigEndianVarLenInt()
+    //     {
+    //         int val = 0;
+    //         int i = 0;
+    //         unsigned char tmp;
+    //         do
+    //         {
+    //             tmp = readByte();
+    //             i++;
+    //             val = (val << 7) | (tmp & 0x7F);
+    //             if (i == 3)
+    //             {
+    //                 break;
+    //             }
+    //         } while (tmp >= 128);
+    //         return val;
+    //     };
+    //     int getLittleEndianVarLenInt()
+    //     {
+    //         int val = 0;
+    //         int i = 0;
+    //         unsigned char tmp;
+    //         do
+    //         {
+    //             tmp = readByte();
+    //             val += int(tmp & 0x7F) << (i * 7);
+    //             i++;
+    //             if (i == 3)
+    //             {
+    //                 break;
+    //             }
+    //         } while (tmp >= 128);
+    //         return val;
+    //     };
+    // };
 
     // drain can act as a place to send a stream of bytes.
     // It's a lot like a sink except the desination is virtual and not just a buffer.
@@ -571,20 +571,20 @@ namespace knotfree
         }
     };
     // a fount that is a slice.
-    struct SliceFount : fount
-    {
-        slice src;
-        SliceFount(slice src) : src(src) {}
-        SliceFount() {}
-        virtual unsigned char readByte()
-        {
-            return src.readByte();
-        }
-        virtual bool empty()
-        {
-            return src.empty();
-        }
-    };
+    // struct SliceFount : fount
+    // {
+    //     slice src;
+    //     SliceFount(slice src) : src(src) {}
+    //     SliceFount() {}
+    //     virtual unsigned char readByte()
+    //     {
+    //         return src.readByte();
+    //     }
+    //     virtual bool empty()
+    //     {
+    //         return src.empty();
+    //     }
+    // };
     // a drain that is a sink.
     // writes to this drain are written to the drain's buffer.
     // struct SinkDrain : drain
@@ -644,7 +644,7 @@ namespace knotfree
             return buffer.getWritten();
         }
     };
-} // namespace knotfree
+} // namespace mqtt5nano
 
 // Copyright 2020 Alan Tracey Wootton
 //

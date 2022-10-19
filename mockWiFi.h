@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "knotStream.h"
+#include "mockStream.h"
 
 #include "slices.h"
 
@@ -108,7 +108,7 @@ struct mockWiFi
 
 extern mockWiFi WiFi;
 
-struct CoutDrain2 : knotfree::drain // for the examples output to cout
+struct CoutDrain2 : mqtt5nano::drain // for the examples output to cout
 {
     bool writeByte(char c) override
     {
@@ -135,7 +135,7 @@ struct mockWiFiClientBuffers : Stream
     CoutDrain2  output;
 
     char buff[16000];
-    knotfree::slice  source;//(buff,0,0);
+    mqtt5nano::slice  source;//(buff,0,0);
 
 
     bool connected()

@@ -3,7 +3,7 @@
 
 #include "slices.h"
 
-using namespace knotfree; // we'll use slices
+using namespace mqtt5nano; // we'll use slices
 
 namespace badjson
 {

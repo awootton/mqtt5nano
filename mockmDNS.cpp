@@ -1,12 +1,8 @@
+#include "mockmDNS.h"
 
+#if not defined(ARDUINO)
 
-#if defined(ARDUINO)
-#include <EEPROM.h>
-#else
-
-#include "knotEEPROM.h"
-
-mockEEPROM EEPROM;
+mockMdns MDNS;
 
 #endif
 
@@ -24,6 +20,3 @@ mockEEPROM EEPROM;
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-

@@ -7,7 +7,7 @@
  * All you have to do is declare one and it automatically gets
  * linked in with the rest of them.
  */  
-namespace knotfree
+namespace mqtt5nano
 {
     extern int commandsServed; 
     extern long latestNowMillis;

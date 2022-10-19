@@ -47,7 +47,7 @@ int main()
     // we need to parse a pub and generate a pub.
     // we need to be able to generate a sub and generate a connect.
     // we need to not barf, ever ever ever, when receiving garbage.
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     testParsePublish2();
    
@@ -62,16 +62,16 @@ int main()
     testParsePublish();
 }
 
-using namespace knotfree;
+using namespace mqtt5nano;
 
-bool parseHelper(mqttPacketPieces &parser, mqttBuffer1024 &parserBuffer, fount *net)
+bool parseHelper(mqttPacketPieces &parser, mqttBuffer1024 &parserBuffer, slice net)
 {
     bool fail = false;
 
-    while (!net->empty())
+    while (!net.empty())
     {
-        unsigned char packetType = net->readByte();
-        int len = net->getLittleEndianVarLenInt();
+        unsigned char packetType = net.readByte();
+        int len = net.getLittleEndianVarLenInt();
 
         if (len > 1024 - 4)
         {
@@ -86,7 +86,9 @@ bool parseHelper(mqttPacketPieces &parser, mqttBuffer1024 &parserBuffer, fount *
 
         // now we can read the rest
         //  mqttBuffer parserBuffer;
-        slice body = parserBuffer.loadFromFount(*net, len);
+        slice body = net ;//parserBuffer.loadFromFount(*net, len);
+        body.end = body.start + len;
+        net.start += len;
 
         fail = parser.parse(body, packetType, len);
         if (fail)
@@ -100,19 +102,19 @@ bool parseHelper(mqttPacketPieces &parser, mqttBuffer1024 &parserBuffer, fount *
 
 void testParseMisc()
 {
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     mqttBuffer1024 testbuffer;   // to supply the fount
     mqttBuffer1024 parserBuffer; // for use by the parser.
 
     mqttPacketPieces parser; // the parser.
-    SliceFount net;
+    slice net;
 
     const char *pubbytes = "200600000322000a";// this is NOT a pub
 
-    net.src = testbuffer.loadHexString(pubbytes);
+    net = testbuffer.loadHexString(pubbytes);
 
-    bool failed = parseHelper(parser, parserBuffer, &net);
+    bool failed = parseHelper(parser, parserBuffer, net);
 
     if (failed)
     {
@@ -121,9 +123,9 @@ void testParseMisc()
 
     pubbytes = "900400010000";// not a pub
 
-    net.src = testbuffer.loadHexString(pubbytes);
+    net = testbuffer.loadHexString(pubbytes);
 
-    failed = parseHelper(parser, parserBuffer, &net);
+    failed = parseHelper(parser, parserBuffer, net);
 
     if (failed)
     {
@@ -132,9 +134,9 @@ void testParseMisc()
 
     pubbytes = "40020004";
 
-    net.src = testbuffer.loadHexString(pubbytes);
+    net = testbuffer.loadHexString(pubbytes);
 
-    failed = parseHelper(parser, parserBuffer, &net);
+    failed = parseHelper(parser, parserBuffer, net);
 
     if (failed)
     {
@@ -144,9 +146,9 @@ void testParseMisc()
     // now, all in a row.
     pubbytes = "200600000322000a90040001000040020004";
 
-    net.src = testbuffer.loadHexString(pubbytes);
+    net = testbuffer.loadHexString(pubbytes);
 
-    failed = parseHelper(parser, parserBuffer, &net);
+    failed = parseHelper(parser, parserBuffer, net);
 
     if (failed)
     {
@@ -161,7 +163,7 @@ void testParseMisc()
 
 void testGenerateConnect()
 {
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     slice s;
     mqttPacketPieces congen;
@@ -195,7 +197,7 @@ void testGenerateConnect()
 
 void testGeneratePublish()
 {
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     slice s;
     mqttPacketPieces pubgen;
@@ -239,7 +241,7 @@ void testGeneratePublish()
 void testGenerateSubscribe()
 {
 
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     slice s;
     mqttPacketPieces subscribe;
@@ -283,16 +285,19 @@ void testParsePublish()
 {
     const char *pubbytes = "3268000d544553542f54494d456162636400032d080010544553542f54494d4565666768696a6b2600046b657931000476616c312600046b657932000476616c326d65737361676520617420323032302d30332d32372030313a33353a33372e34303330373920633d31";
 
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     mqttBuffer1024 testbuffer;
 
-    SliceFount net;
-    net.src = testbuffer.loadHexString(pubbytes);
+    slice net;
+    net = testbuffer.loadHexString(pubbytes);
+        // slice body = net ;//parserBuffer.loadFromFount(*net, len);
+        // body.end = body.start + len;
+        // net.start += len;
 
     char tmp[256];
     
-    char * str = net.src.gethexstr(tmp,256);
+    char * str = net.gethexstr(tmp,256);
    // cout << "loaded" << str << str << "\n";
 
     cout << "sizeof(mqttPacketPieces)=" << sizeof(mqttPacketPieces) << " ,\n"; // 200, 128 of which is the user key-values
@@ -302,8 +307,10 @@ void testParsePublish()
     int len = net.getLittleEndianVarLenInt();
 
     // now we can read the rest
-    mqttBuffer1024 parserBuffer;
-    slice body = parserBuffer.loadFromFount(net, len);
+    //mqttBuffer1024 parserBuffer;
+        slice body = net ;//parserBuffer.loadFromFount(*net, len);
+        body.end = body.start + len;
+        net.start += len;
 
     mqttPacketPieces parser;
     bool failed = parser.parse(body, packetType, len);
@@ -376,12 +383,12 @@ void testParsePublish2()
 {
     const char *pubbytes = "306600213d78484b4c487630794e5f3738344c472d736d4b363475583679324d384e6c46642808000120260006787864656267000c5b787831323334353637385d260003617477000574657374316d736723636c69656e7449642d777331333175316577745f3432";
 
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     mqttBuffer1024 testbuffer;
 
-    SliceFount net;
-    net.src = testbuffer.loadHexString(pubbytes);
+    slice net;
+    net = testbuffer.loadHexString(pubbytes);
 
     char tmp[2560];
     
@@ -396,7 +403,9 @@ void testParsePublish2()
 
     // now we can read the rest
     mqttBuffer1024 parserBuffer;
-    slice body = parserBuffer.loadFromFount(net, len);
+    slice body = net;// parserBuffer.loadFromFount(net, len);
+    body.end = body.start + len;
+    net.start += len;
 
     mqttPacketPieces parser;
     bool failed = parser.parse(body, packetType, len);

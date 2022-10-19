@@ -1,8 +1,12 @@
-#include "knotmDNS.h"
+
+#include "mockWiFi.h"
 
 #if not defined(ARDUINO)
 
-mockMdns MDNS;
+mockWiFi WiFi;
+
+//mockWiFiClient2 WiFiClient;
+
 
 #endif
 

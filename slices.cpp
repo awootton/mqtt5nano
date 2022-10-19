@@ -1,8 +1,8 @@
 
 #include "slices.h"
-#include "knotbase64.h"
+#include "nanobase64.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     const char * slice::emptyStr = "";
@@ -57,7 +57,7 @@ namespace knotfree
         return &buffer[0];
     }
 
-} // namespace knotfree
+} // namespace mqtt5nano
 
 // Copyright 2022 Alan Tracey Wootton
 //

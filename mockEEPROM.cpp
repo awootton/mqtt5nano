@@ -1,12 +1,12 @@
 
-#include "knotWiFi.h"
 
-#if not defined(ARDUINO)
+#if defined(ARDUINO)
+#include <EEPROM.h>
+#else
 
-mockWiFi WiFi;
+#include "mockEEPROM.h"
 
-//mockWiFiClient2 WiFiClient;
-
+mockEEPROM EEPROM;
 
 #endif
 
@@ -24,3 +24,6 @@ mockWiFi WiFi;
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+

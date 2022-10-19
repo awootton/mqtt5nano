@@ -29,7 +29,7 @@ using namespace std;
  *  Do we really receive anything except publish?
  */
 
-using namespace knotfree;
+using namespace mqtt5nano;
 
 slice onePacketSimpleExample();
 
@@ -87,7 +87,7 @@ slice onePacketSimpleExample(mqttPacketPieces &parser, const slice availableNow)
 {
     cout << "testAsyncSim Hello World!\n";
 
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     slice position(availableNow);
 

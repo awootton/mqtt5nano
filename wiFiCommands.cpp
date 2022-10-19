@@ -2,7 +2,7 @@
 
 #include "wiFiCommands.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     bool connected = false;

@@ -1,7 +1,7 @@
 
 #include "eepromItem.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
     EepromItem *eehead;
 

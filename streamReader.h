@@ -1,12 +1,12 @@
 
 #pragma once
 
-#include "knotStream.h"
+#include "mockStream.h"
 #include "slices.h"
 #include "badjson.h"
 #include "commandLine.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
     /**  This is just another implementation of
      * the Usual Serial.read() that buffers the bytes up

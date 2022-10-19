@@ -1,8 +1,8 @@
 
-#include "mqtt5nano.h"
-#include "knotbase64.h"
+#include "mqtt5nanoParse.h"
+#include "nanobase64.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     // FIXME: return ok, not fail.
@@ -370,26 +370,26 @@ namespace knotfree
         return 0xFF;
     };
 
-    slice mqttBuffer::loadFromFount(fount &f, int amount)
-    {
-        bool ok = true;
-        slice extent;
-        extent.start = 0;
-        extent.base = buffer;
-        extent.end = 0;
-        for (int i = 0; i < amount; i++)
-        {
-            extent.end = i;
-            if (f.empty() == true)
-            {
-                return extent;
-            }
-            unsigned char c = f.readByte();
-            buffer[extent.end] = c;
-            extent.end++;
-        };
-        return extent;
-    };
+    // slice mqttBuffer::XXXloadFromFount(fount &f, int amount)
+    // {
+    //     bool ok = true;
+    //     slice extent;
+    //     extent.start = 0;
+    //     extent.base = buffer;
+    //     extent.end = 0;
+    //     for (int i = 0; i < amount; i++)
+    //     {
+    //         extent.end = i;
+    //         if (f.empty() == true)
+    //         {
+    //             return extent;
+    //         }
+    //         unsigned char c = f.readByte();
+    //         buffer[extent.end] = c;
+    //         extent.end++;
+    //     };
+    //     return extent;
+    // };
 
     slice mqttBuffer::loadHexString(const char *hexstr)
     {
@@ -401,7 +401,7 @@ namespace knotfree
         return extent;
     };
 
-} // namespace knotfree
+} // namespace mqtt5nano
 
 // Copyright 2020,2021,2022 Alan Tracey Wootton
 //

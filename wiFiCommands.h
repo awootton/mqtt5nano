@@ -1,15 +1,15 @@
 
 #pragma once
 
-#include "knotStream.h"
+#include "mockStream.h"
 #include "commandLine.h"
 #include "eepromItem.h"
 #include "timedItem.h"
 
-#include "knotWiFi.h"
-#include "knotmDNS.h"
+#include "mockWiFi.h"
+#include "mockmDNS.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
     extern bool connected;
     extern EepromItem ssidStash; //(32, "ssid");

@@ -4,7 +4,7 @@
 
 #include <string.h> // has strcmp
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     long latestNowMillis = 0;

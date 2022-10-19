@@ -2,7 +2,7 @@
 
 #include "badjson.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
     /** We are going to consider that every command line might actually
      * be HTTP instead of just a command line with words and ending with \n

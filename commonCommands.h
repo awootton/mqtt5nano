@@ -5,7 +5,7 @@
 #include "commandLine.h"
 #include "eepromItem.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
     struct getUptime : Command
     {

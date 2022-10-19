@@ -6,9 +6,9 @@
 char readbuffer[1024];
 
 
-knotfree::streamReader reader(readbuffer, sizeof(readbuffer));
+mqtt5nano::streamReader reader(readbuffer, sizeof(readbuffer));
 
-struct test1Struct : knotfree::Command
+struct test1Struct : mqtt5nano::Command
 {
     void init() override
     {

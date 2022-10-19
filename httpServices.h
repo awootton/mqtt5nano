@@ -5,13 +5,13 @@
 // #include "EepromItem.h"
 // #include "timedItem.h"
 
-#include "knotWiFi.h"
+#include "mockWiFi.h"
 // #include "knotmDNS.h"
 
 #include "httpConverter.h"
 #include "streamReader.h"
 
-namespace knotfree
+namespace mqtt5nano
 {
 
     /** WebServer is not a typical web server. Right now it only accepts GET

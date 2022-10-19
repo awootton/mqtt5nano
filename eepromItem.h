@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "knotEEPROM.h"
+#include "mockEEPROM.h"
  
 #include "slices.h"
 
@@ -12,7 +12,7 @@
  * and then, in the cpp file, declare it like this:
  * EepromItem ssidStash(32, "ssid");
  */ 
-namespace knotfree
+namespace mqtt5nano
 {
     // we could make an EEDrain and people can just write 
     struct EepromItem
@@ -57,7 +57,7 @@ namespace knotfree
     };
 
     EepromItem *getEitemHead(); // do we need this?
-    // this is for EEPROM.begin(knotfree::getEitemTotal()); which is needed in setup.
+    // this is for EEPROM.begin(mqtt5nano::getEitemTotal()); which is needed in setup.
     int getEitemTotal(); 
 
 }

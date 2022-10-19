@@ -1,3 +1,16 @@
+
+# Executables
+
+badJsonParser_test/testBadJson
+commands_test/test_commands_main
+mqtt5nano_test/test_mqtt5nano
+mqtt5nano_test/testAsyncSim
+mqtt5nano_test/testTcpConnect
+mqtt5nano_test/testTcpMqtt
+mqttCommands_test/test_mqtt_commands_main
+test_crypto_test/helloworld
+test_crypto7_test/box7
+
 # Prerequisites
 *.d
 
@@ -34,8 +47,6 @@
 *.out
 *.app
 
-# Executables
-badJsonParser/testBadJson
 
 # libraries are a soft link to ~/Arduino/libraries
 libraries

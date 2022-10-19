@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace knotfree
+namespace mqtt5nano
 {
     /** This gadget is used to do stuff link 'blink' without calling sleep()
      * There are many explanations of how to acomplsh this on the web.
@@ -14,7 +14,7 @@ namespace knotfree
 
         #define LED_BUILTIN 2 // for ESP32
 
-        struct blinker : knotfree::TimedItem { // define it
+        struct blinker : mqtt5nano::TimedItem { // define it
             bool isOn = false;
             void init() override {
                 SetInterval(1200);// 1.2 second

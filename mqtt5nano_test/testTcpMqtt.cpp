@@ -44,7 +44,7 @@ unsigned int millis();
 
 using namespace std;
 
-using namespace knotfree;
+using namespace mqtt5nano;
 
 // it's a bug that this token still works. 
 const char *password = "[Free_token_expires:_2021-12-31,{exp:1641023999,iss:_9sh,jti:HpifIJkhgnTOGc3EDmOJaV0A,in:32,out:32,su:4,co:2,url:knotfree.net},eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiSldUIn0.eyJleHAiOjE2NDEwMjM5OTksImlzcyI6Il85c2giLCJqdGkiOiJIcGlmSUpraGduVE9HYzNFRG1PSmFWMEEiLCJpbiI6MzIsIm91dCI6MzIsInN1Ijo0LCJjbyI6MiwidXJsIjoia25vdGZyZWUubmV0In0.YSo2Ur7lbkwTPZfQymyvy4N1mWQaUn_cziwK36kTKlASgqOReHQ4FAocVvgq7ogbPWB1hD4hNoJtCg2WWq-BCg]";
@@ -250,7 +250,7 @@ bool sendSubscribe( int  sock ) {
 // that means the return is the same as the input if no packet was passed
 slice onePacketSimpleExample(mqttPacketPieces &parser, const slice availableNow)
 {
-    using namespace knotfree;
+    using namespace mqtt5nano;
 
     slice position(availableNow);
 
