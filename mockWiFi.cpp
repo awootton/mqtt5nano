@@ -5,8 +5,13 @@
 
 mockWiFi WiFi;
 
-//mockWiFiClient2 WiFiClient;
+espClass ESP;
 
+char serverClientInputBuffer[8192];
+mqtt5nano::slice serverClientInputSource;
+
+
+// mockWiFiClient2 WiFiClient;
 
 #endif
 

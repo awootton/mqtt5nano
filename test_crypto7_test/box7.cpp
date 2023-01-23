@@ -6,13 +6,13 @@
 
 #include <random>
 
-#include "crypto.h"
+#include "nanoCrypto.h"
 
 #include "slices.h"
 
 using namespace std;
 
-namespace knotcrypto
+namespace nanocrypto
 {
 
 #define crypto_box_SECRETKEYBYTES 32
@@ -165,5 +165,5 @@ namespace knotcrypto
 
 int main(void)
 {
-    knotcrypto::main();
+    nanocrypto::main();
 }

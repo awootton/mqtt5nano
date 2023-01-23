@@ -9,7 +9,7 @@
 
 #include <stddef.h>
 
-namespace knotcrypto {
+namespace nanocrypto {
 
     // typedef int size_t;
 

@@ -1,0 +1,7 @@
+{
+    "configuration": "xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,eesz=4M2M,led=2,ip=lm2f,dbg=Serial,lvl=None____,wipe=none,baud=460800",
+    "board": "esp8266:esp8266:nodemcuv2",
+    "port": "/dev/tty.usbserial-1430",
+    "sketch": "banner1.ino",
+    "output": "./ArduinoOutput"
+}

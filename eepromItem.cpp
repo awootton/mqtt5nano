@@ -1,27 +1,70 @@
 
 #include "eepromItem.h"
+#include "commandLine.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
     EepromItem *eehead;
 
     int totalSize = 0;
 
-    EepromItem::EepromItem(int size, const char *description) : size(size), description(description)
-    {   
+    EepromItem::EepromItem(int size, const char *description, const char *initialValue)
+        : size(size), description(description), initialValue(initialValue) {
         offset = totalSize;
         totalSize += size;
-        EepromItem * nxt = eehead;
+        EepromItem *nxt = eehead;
         eehead = this;
         this->next = nxt;
     }
 
-    EepromItem *getEitemHead(){
+    EepromItem *getEitemHead() {
         return eehead;
     }
-    int getEitemTotal(){
+    int getEitemTotal() {
         return totalSize;
     }
+
+    void initAllEeItem() {
+        globalSerial->println("# Ee Init");
+        EepromItem *eP = eehead;
+        while (eP != nullptr) {
+            // serial.print("ee checking ");
+            // serial.print(eP->description);
+            // serial.print(" ");
+            // serial.print(eP->offset);
+            // serial.print(" ");
+            // serial.print(eP->size);
+            // serial.print("\n");
+            eP->checkStarted();
+            eP = eP->next;
+        }
+    }
+    // erase command
+    struct eraseAll : Command {
+        void init() override {
+            name = "erase eeprom";
+            description = "erase all the settings with code KILLMENOW";
+            this->argumentCount = 1;
+
+            // serial only
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+                if ( args.count() == 0 ){
+                    out.write("arg expected");
+                    return;
+                }
+                if ( ! args[0].equals("KILLMENOW") ){
+                    out.write("wrong arg");
+                    return;
+                }
+                for ( int i = 0; i < totalSize; i ++ ){
+                    EEPROM.write(i,0xFF);
+                }
+                EEPROM.commit();
+                out.write("ok. You should reboot now.");
+        }
+    };
+
+    eraseAll ea;
 
 }
 

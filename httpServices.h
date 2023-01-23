@@ -1,18 +1,26 @@
 #pragma once
 
 #include "wiFiCommands.h"
-// #include "commandLine.h"
-// #include "EepromItem.h"
-// #include "timedItem.h"
 
 #include "mockWiFi.h"
-// #include "knotmDNS.h"
 
 #include "httpConverter.h"
 #include "streamReader.h"
 
-namespace mqtt5nano
-{
+#include "streamReader.h"
+
+namespace mqtt5nano {
+
+    struct refreshMdnsTimer : TimedItem {
+        void init() {
+            SetInterval(10 * 1000); // every 10 sec.
+        };
+        void execute() {
+            if (connected) {
+                mdnsUpdate(); // MDNS.update();
+            }
+        }
+    };
 
     /** WebServer is not a typical web server. Right now it only accepts GET
      * and it simply removes the '/' from the path and then passes that to the usual
@@ -23,101 +31,123 @@ namespace mqtt5nano
         WiFiServer server; //(80);
         bool didServerInit = false;
 
+        refreshMdnsTimer mdnsTimer;
+
         // can we afford 4k? Multiple clients didn't work.
         // static const int maxClients = 4;  // should be enough.?
         static const int buffSize = 1024; // should be enough.?
         WiFiClient client;
-        // struct bb
-        // {
-        //     char buf[buffSize];
-        // };
         char sinkbuffer[buffSize]; // s[maxClients]; // [maxClients][buffSize];
         sink websink;
-        bool clientconnected; //[maxClients];
+        bool clientconnected;
 
-        WebServer() : server(80)
-        {
+        WebServer() : server(80) {
 
             websink.base = sinkbuffer;
             websink.start = 0;
             websink.end = buffSize;
-            //   clientconnected[i] = false;
         }
-        void serviceClients(class Stream &s)
-        {
-            // service the clients.
-            // for (int i = 0; i < maxClients; i++)
-            //{
-            if (client.connected())
-            {
-                if (!clientconnected)
-                {
-                    s.println("newly connected ");
+        void serviceClients(class Stream &s) {
+            if (client.connected()) {
+                if (!clientconnected) {
+                    // s.println("# newly connected ");
                     // s.println();
                     clientconnected = true;
                 }
-                int charMax = 32;
+                int charMax = 64;
                 // WiFiClient &client = clients[i];
-                while (charMax && client.available() > 0)
-                {
+                while (charMax && client.available() > 0) {
                     charMax--;
-                    if ((websink.start % 16) == 0)
-                    {
-                        s.print(".");
+                    if ((websink.start % 16) == 0) {
+                        // s.print(".");
                     }
                     char c = client.read();
                     websink.writeByte(c);
-                    if (ParsedHttp::isWholeRequest(websink))
-                    {
+                    if (ParsedHttp::isWholeRequest(websink)) {
                         // got one !!
-                        s.println("got http ");
+                        // s.println("# got http ");
+                       
                         // s.println(0);
                         // I'm gonna need a buffer
                         char *cmdreplybuffer = new char[2048];
                         SinkDrain response(cmdreplybuffer, 2048);
 
+                        s.print("got ");
+                        s.println(websink.getWritten().getCstr(cmdreplybuffer,2048));
+
                         ParsedHttp parsed;
                         bool ok = parsed.convert(websink);
-                        if (ok)
-                        {
-                            s.println("parsed ok");
-                            // s.print(i);
-                            StreamDrain dr(s);
-                            parsed.command->GetQuoted(dr);
-                            s.println();
-                        }
-                        else
-                        {
-                            s.println("parsed FAIL");
-                            // s.println(i);
+                        if (ok) {
+                            // s.println("# parsed ok");
+                            // StreamDrain dr(s);
+                            // parsed.command->GetQuoted(dr); // print the command
+                            // s.println();
+                        } else {
+                            s.println("# parsed FAIL");
+                            s.println(websink.getWritten().getCstr(cmdreplybuffer,2048));
                         }
                         // pass to execute
-                        process(parsed.command, parsed.params, response);
+                        Command::process(parsed.command, parsed.params, response);
+
+                        int responseLen = response.buffer.start;
+                        s.print("content len");
+                        s.println(responseLen);
+
+                        bool isPng = parsed.command->input.equals("favicon.ico");
 
                         // call command processing instead of this
                         // response.write("this would be the reply");
-                        int responseLen = response.buffer.start;
-                        response.writeByte((char)0);
 
-                        // s.print("content len");
-                        // s.println(responseLen);
-
+                        if (!isPng) {
+                            // response.writeByte((char)0);
+                        }
                         // s.print("content");
                         // s.println(response.buffer.base);
 
-                        if (true)// can we skip all this?? Seems to work sometimes. Kinda mean though. Good to not 'new' buffer though.
+                        // TODO: out-line this
+                        if (true) 
                         {
-                            client.write("HTTP/1.1 200 OK\r\n"); 
-                            client.write("Content-Length: ");
+                            client.print(F("HTTP/1.1 200 OK\r\n"));
+                            client.print(F("Content-Length: "));
                             client.print(responseLen);
-                            client.write("\r\n");
-                            client.write("Content-Type: text/plain\r\n");
-                            client.write("Connection: Closed\r\n");
-                            client.write("\r\n");
+                            client.print(F("\r\n"));
+                            // we have to return the params as headers
+                            badjson::Segment *pP = parsed.params;
+                            char tmp[64];
+                            while (pP != nullptr) {
+                                client.write(pP->input.getCstr(tmp, sizeof(tmp)));
+                                client.write(": ");
+                                pP = pP->nexts;
+                                if (pP != nullptr) {
+                                    client.write(pP->input.getCstr(tmp, sizeof(tmp)));
+                                    pP = pP->nexts;
+                                }
+                                client.print(F("\r\n"));
+                            }
+                            if (isPng) { // hack alert
+                                client.print(F("Content-Type: image/png\r\n"));
+                            } else {
+                                client.print(F("Content-Type: text/plain\r\n"));
+                            }
+                            client.print(F("Access-Control-Allow-Origin: https://knotfree.net, http://knotfree.io\r\n"));
+                            client.print(F("Access-control-expose-headers: *\r\n"));
+                            client.print(F("Access-Control-Allow-Private-Network: true\r\n"));
+                            client.print(F("Access-Control-Request-Private-Network: true\r\n"));
+                            client.print(F("Access-Control-Allow-Methods: GET, PUT, OPTIONS\r\n"));
+                            client.print(F("Content-Security-Policy: treat-as-public-address\r\n"));
+                            client.print(F("Access-Control-Max-Age: 10\r\n")); // 300 ? 86400 ?
+                               
+                            client.print(F("Connection: Closed\r\n"));
+
+                            client.print(F("\r\n"));
                         }
 
                         // client.setNoDelay(true);
-                        client.write(cmdreplybuffer);
+
+                        // wtf client.write((const char*)cmdreplybuffer,(size_t)responseLen);
+                        for (int i = 0; i < responseLen; i++) {
+                            client.write((uint8_t)cmdreplybuffer[i]);
+                        }
 
                         client.flush();
                         client.stop();
@@ -128,68 +158,30 @@ namespace mqtt5nano
                         websink.start = 0; // reset
                     }
                 }
-            }
-            else
-            {
-                if (clientconnected)
-                {
-                    s.println("UN connected ");
+            } else {
+                if (clientconnected) {
+                    // s.println("# UN connected ");
                     // s.println(i);
                     clientconnected = false;
                 }
             }
-            //}
         }
 
-        void loop(long now, class Stream &s)
-        {
-            if (connected)
-            {
+        void loop(long now, class Stream &s) {
+            if (connected) {
                 // open a listener socket
-                if (!didServerInit)
-                {
+                if (!didServerInit) {
                     server.begin();
                     didServerInit = true;
-                    s.println("server begin");
+                    // s.println("# Http server begin");
+                    // MDNS.addService("http", "tcp", 80);
                 }
                 bool anyConnected = client.connected();
-                if (!anyConnected)
-                {
+                if (!anyConnected) {
                     client = server.available(); // does it new these?
-                    // if (client.connected())
-                    // {
-                    //     s.println("new client.connected");
-                    //     // we have a new one
-                    //     bool found = false;
-                    //     for (int i = 0; i < maxClients; i++)
-                    //     {
-                    //         if (clients[i] == client)
-                    //         {
-                    //             s.print("found ");
-                    //             s.println(i);
-                    //             found = true;
-                    //             break;
-                    //         }
-                    //     }
-                    //     if (!found)
-                    //     {
-                    //         for (int i = 0; i < maxClients; i++)
-                    //         {
-                    //             if (!(clients[i].connected()))
-                    //             {
-                    //                 clients[i] = client;
-                    //                 s.print("added to slot ");
-                    //                 s.println(i);
-                    //                 break;
-                    //             }
-                    //         }
-                    //     }
-                    // }
                 }
                 serviceClients(s);
-            }
-            else
-            {
+            } else {
                 // s.println("server gave us an unconnected Client !!! ");
             }
         }

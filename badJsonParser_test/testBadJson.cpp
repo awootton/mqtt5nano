@@ -25,7 +25,7 @@
 #include <string>
 
 #include "badjson.h"
-#include "knotbase64.h"
+#include "nanobase64.h"
 
 #include <stdio.h>
 

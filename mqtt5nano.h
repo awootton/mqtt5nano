@@ -1,72 +1,145 @@
-// #include "Arduino.h"
+//
 
 #pragma once
 
+#if defined(ARDUINO)
+#include "Arduino.h"
+#else
+extern void delay(int);
+#endif
+
+//
 
 /** This file includes all the rest of the headers in this package.
  *
  */
 
-#include "knotStream.h" // this does nothing on Arduino. A stub.
-
+#include "nanoCommon.h"
+#include "mockStream.h" // this does nothing on Arduino. A stub.
 // this is the mqtt5 parser and generator.
 #include "mqtt5nanoParse.h"
-
-// timedItem is a simple gadget for doing things like blink
-// without using sleep.
-
 #include "timedItem.h"
-
 // drags in the help command
-#include "streamReader.h"
-
-// #include "commandLine.h"
-#include "eepromItem.h"
-
-#include "wiFiCommands.h"
+#include "commandLine.h"
 #include "commonCommands.h"
-
+#include "eepromItem.h"
 #include "httpServices.h"
-
 #include "mqttCommands.h"
+#include "nanoCrypto.h"
+#include "nanobase64.h"
+#include "setupWizard.h"
+#include "streamReader.h"
+#include "wiFiCommands.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
+
     extern long latestNowMillis;
 
-    extern MqttCommandClient *mqttClientP;
-    
-    struct PackageOne
-    {
+    extern class Stream *globalSerial;
+
+    extern EepromItem *eehead;
+
+    struct PackageOne {
+
         streamReader serialCommandHandler;
-        WiFiHelper wifi;
+
+        MqttCommandClient mqttClient;
         WebServer www;
+        WiFiHelper wifi;
 
         getUptime up;
         getServed served;
+        getVersion version;
 
-        MqttCommandClient mqttClient;
+        void setup(class Stream &serial) {
+            globalSerial = &serial;
+            serial.println("# hello nano package one");
+            serial.println("# type 'help'");
 
-        void setup(class Stream &serial)
-        {
-            serial.println("hello knotfree package one");
-            serial.println("open a console and type something");
+            moreScrambled(WiFi.macAddress().c_str());
+            moreScrambled(54321);
+
+            int eesize = mqtt5nano::getEitemTotal();
+            eesize = (eesize+3) & 0xFFFFFFFC;
+            serial.print("# EEsize ");
+            serial.println(eesize);
+
+            EEPROM.begin(eesize);
+
+            // EepromItem *eP = eehead;
+            // while (eP != nullptr) {
+            //     serial.print("ee r1 ");
+            //     serial.print(eP->description);
+            //     serial.print(" ");
+            //     StreamDrain sd(serial);
+            //     eP->readAll(sd);
+            //     serial.print("\n");
+            //     eP = eP->next;
+            // }
+
+            char defaultShortName[8];// = "thing-X";
+            char defaultLongName[28];// = "thing-XXXXXXXXXXXX";
+            getRandomString(defaultShortName,sizeof(defaultShortName)-1);
+            getRandomString(defaultLongName,sizeof(defaultLongName)-1);
+            defaultShortName[sizeof(defaultShortName)-1] = 0;
+            defaultLongName[sizeof(defaultLongName)-1] = 0;
+
+            memcpy(defaultShortName,"thing-",6);
+            memcpy(defaultLongName,"thing-",6);
+            hostStash.initialValue = defaultShortName;
+            topicStash.initialValue = defaultLongName;
+
+            initAllEeItem(); // calls checkStarted
+            hostStash.initialValue = "";
+            topicStash.initialValue = "";
+
+            // eP = eehead;
+            // while (eP != nullptr) {
+            //     serial.print("ee checking ");
+            //     serial.print(eP->description);
+            //     serial.print(" ");
+            //     serial.print(eP->offset);
+            //     serial.print(" ");
+            //     serial.print(eP->size);
+            //     serial.print("\n");
+            //     eP->checkStarted();
+            //     eP = eP->next;
+            // }
             
-            EEPROM.begin(mqtt5nano::getEitemTotal());
-            // // serialCommandHandler.setup((char *)readbuffer, (int)sizeof(readbuffer));
+
+            EEPROM.commit();
+
+            // eP = eehead;
+            // while (eP != nullptr) {
+            //     serial.print("ee r2 ");
+            //     serial.print(eP->description);
+            //     serial.print(" ");
+            //     StreamDrain sd(serial);
+            //     eP->readAll(sd);
+            //     serial.print("\n");
+            //     eP = eP->next;
+            // }
+            //EEPROM.end();
+            //EEPROM.begin(eesize);
+
+            pushWizard(makeGetWifi());
         }
 
-        void loop(long now, class Stream &serial)
-        {
-            serialCommandHandler.loop(serial);
+        void loop(long now, class Stream &serial) {
+            globalSerial = &serial;
+            latestNowMillis = now;
+
+            serialCommandHandler.loop(now,serial);
             wifi.loop(now, serial);
+
             www.loop(now, serial);
             mqttClient.loop(now, serial);
+
+            TimedItem::LoopAll((unsigned long)now);
+            delay(1);
         }
     };
 }
-
-//#include "textCmdSerial.h"
 
 // Copyright 2022 Alan Tracey Wootton
 //

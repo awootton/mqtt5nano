@@ -1,10 +1,10 @@
 
 
 #include <iostream>
-//#include <vector>
-//#include <stdio.h>
+// #include <vector>
+// #include <stdio.h>
 #include <string>
-//#include <string.h> // has strcmp
+// #include <string.h> // has strcmp
 
 #include <stdlib.h>
 
@@ -31,8 +31,7 @@ using namespace badjson;
 
 struct CoutDrain : drain // for the examples output to cout
 {
-    bool writeByte(char c) override
-    {
+    bool writeByte(char c) override {
         cout << c;
         bool ok = true;
         return ok;
@@ -46,33 +45,79 @@ SinkDrain test_buffer_drain(testbuffer, sizeof(testbuffer));
 
 // in real life we output to Serial or tcp or mqtt.
 
-struct test1Struct : Command
-{
-    void init() override
-    {
-        SetName("get test1");
-        SetDescription("output hello test1");
+struct TestCommand : Command {
+public:
+    void init() override {
+        name = "get test1";
+        description = "output hello test1";
     }
-    void execute(badjson::Segment *words, badjson::Segment *params, drain &out) override
-    {
+    void execute(Args args, badjson::Segment *params, drain &out) override {
         out.write("hello test1");
     }
 };
-test1Struct cmd1;
+TestCommand testCmd;
 
-struct test1Status : test1Struct
-{
-    void init() override
-    {
-        SetName("status");
-        SetDescription("test 1 status");
+class test1Status : TestCommand {
+    void init() override {
+        name = "status";
+        description = "test 1 status";
     }
 };
 test1Status cmd1status;
 
-int main()
-{
+int main() {
     cout << "hello command tests\n";
+
+    {
+        const char *sample = "GET /favicon.ico HTTP/1.1\r\nHost: reqbin.com\r\naccepts: *.*\r\n\r\n";
+        bool ok = ParsedHttp::isWholeRequest(sample);
+        cout << "got http" << ok << "\n";
+
+        ParsedHttp parsed;
+        parsed.convert(sample);
+        cout << "got http" << ok << "\n";
+
+        SinkDrain dest(testbuffer, sizeof(testbuffer));
+
+        badjson::ToString(*parsed.command, dest);
+        dest.writeByte(0);
+        cout << "command " << dest.buffer.base << "\n";
+
+        dest.reset();
+        badjson::ToString(*parsed.params, dest);
+        dest.writeByte(0);
+        cout << "params " << dest.buffer.base << "\n";
+
+        // delete parsed.command;
+        // delete parsed.params;
+    }
+
+    {
+        test_buffer_drain.buffer.reset();
+        const char *test = "favicon.ico";
+
+        ResultsTriplette res = Chop(test, strlen(test));
+
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        // test_buffer_drain.writeByte(0); // now a cstr
+        int amount = test_buffer_drain.buffer.amount();
+        cout << "favicon.ico:len " << amount << "\n";
+
+        delete res.segment; // very important
+    }
+
+    {
+        const char *test = "get test1 command line";
+        ResultsTriplette res = Chop("get test1 command line", strlen(test));
+
+        Args arg(res.segment);
+
+        int c = arg.count();
+
+        slice a0 = arg[0];
+
+        delete res.segment; // very important
+    }
 
     {
 
@@ -95,22 +140,19 @@ int main()
         char buffers[maxClients][buffSize];
         sink sinks[maxClients];
         {
-            for (int i = 0; i < maxClients; i++)
-            {
+            for (int i = 0; i < maxClients; i++) {
                 sinks[i].base = buffers[i];
                 sinks[i].start = 0;
                 sinks[i].end = buffSize;
             }
         }
-        for (int i = 0; i < maxClients; i++)
-        {
+        for (int i = 0; i < maxClients; i++) {
             sinks[i].writeByte('G');
             sinks[i].writeByte('E');
             sinks[i].writeByte('T');
             sinks[i].writeByte(' ');
         }
-        for (int i = 0; i < maxClients; i++)
-        {
+        for (int i = 0; i < maxClients; i++) {
             {
                 sinks[i].writeByte(0);
                 cout << sinks[i].base << "\n";
@@ -132,8 +174,7 @@ int main()
     {
         const char *sample = "GET / HTTP/1.1\r\nHost: reqbin.com\r\naccepts: *.*\r\n\r\n";
         bool ok = ParsedHttp::isWholeRequest(sample);
-        if (!ok)
-        {
+        if (!ok) {
             cout << "isWholeRequest fail"
                  << "\n";
         }
@@ -153,8 +194,8 @@ int main()
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
-        delete parsed.command;
-        delete parsed.params;
+        // delete parsed.command;
+        // delete parsed.params;
     }
 
     {
@@ -177,8 +218,8 @@ int main()
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
-        delete parsed.command;
-        delete parsed.params;
+        // delete parsed.command;
+        // delete parsed.params;
     }
 
     {
@@ -201,8 +242,8 @@ int main()
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
-        delete parsed.command;
-        delete parsed.params;
+        // delete parsed.command;
+        //  delete parsed.params;
     }
 
     {
@@ -225,8 +266,8 @@ int main()
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
-        delete parsed.command;
-        delete parsed.params;
+        // delete parsed.command;
+        // delete parsed.params;
     }
     {
         test_buffer_drain.buffer.reset();
@@ -234,7 +275,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "" << test_buffer_drain.buffer.base << "\n";
 
@@ -245,15 +286,14 @@ int main()
         const char *test = "get test1 command line";
         ResultsTriplette res = Chop("get test1 command line", strlen(test));
 
-        process(res.segment, nullptr, my_cout_drain);
+        CmdTestUtil::process(res.segment, nullptr, my_cout_drain);
         cout << "\n";
 
         test_buffer_drain.buffer.reset();
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << test_buffer_drain.buffer.base << "\n";
-        if (strcmp(test_buffer_drain.buffer.base, "hello test1\n"))
-        {
+        if (strcmp(test_buffer_drain.buffer.base, "hello test1\n")) {
             cout << "FAIL didn't get expected\n";
         }
         delete res.segment; // very important
@@ -264,7 +304,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "get dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -276,7 +316,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "set dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -288,7 +328,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "get dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -300,7 +340,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "status: " << test_buffer_drain.buffer.base << "\n";
 
@@ -312,7 +352,7 @@ int main()
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "help: " << test_buffer_drain.buffer.base << "\n";
 
@@ -335,7 +375,6 @@ int main()
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 // Copyright 2022 Alan Tracey Wootton
 //
 // This program is free software: you can redistribute it and/or modify
@@ -350,4 +389,3 @@ int main()
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-

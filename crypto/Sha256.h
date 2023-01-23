@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 
-namespace knotcrypto
+namespace nanocrypto
 {
     class Sha256Class
     {

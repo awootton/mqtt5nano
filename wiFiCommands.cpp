@@ -2,8 +2,7 @@
 
 #include "wiFiCommands.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
 
     bool connected = false;
 
@@ -21,33 +20,38 @@ namespace mqtt5nano
 
     wifiStatus wifiStatusCmd;
 
-    EepromItem ssidStash(32, "ssid");
+    EepromItem ssidStash(32, "ssid","");
 
-    EepromItem passStash(48, "wifi pass");
+    EepromItem passStash(48, "wifi pass","");
 
-    EepromItem hostStash(32, "host name");
+    EepromItem hostStash(32, "short name","");
 
     hostGet hostGetCommand;
 
     hostSet hostSetCommand;
 
-    favIcon  favIconCmd;
+    favIcon favIconCmd;
 
-    void writeStarredPass(drain &out)
-    {
+    ssidListGet listWifiCmd;
+
+    peersListGet peersListGetCmd;
+
+    freeMem freeMemCmd;
+
+
+    void writeStarredPass(drain &out) {
         char buff[passStash.size];
         SinkDrain tmp(buff, passStash.size);
         passStash.read(tmp);
-        for (int i = 1; i < tmp.buffer.start - 1; i++)
-        {
-            buff[i] = '*';
+        if ( tmp.getWritten().size() == 0 ){
+            return;
         }
-        out.write(tmp.buffer);
+        for (int i = 1; i < 20; i++) {
+           out.writeByte('*');
+        }
     }
 
-
-
-}//namespace
+} // namespace
 
 // Copyright 2022 Alan Tracey Wootton
 //

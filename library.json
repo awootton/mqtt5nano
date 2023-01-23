@@ -1,13 +1,12 @@
 {
-  "name": "mqtt5nano",
-  "keywords": "wifi,wi-fi,mqtt,mqtt5,mqtt 5,iot,thei4t",
-  "description": "Mqtt 5 parser for Arduino with demo for ESP8266",
-  "repository":
-  {
-    "type": "git",
-    "url": "https://github.com/TheI4T/mqtt5nano.git"
-  },
-  "frameworks": "arduino",
-  "platforms": "espressif8266",
-  "version": "0.1.0"
+    "name": "mqtt5nano",
+    "keywords": "wifi,wi-fi,mqtt,mqtt5,mqtt 5,iot",
+    "description": "Mqtt 5 parser for Arduino with demo for ESP32",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/awootton/mqtt5nano.git"
+    },
+    "frameworks": "arduino",
+    "platforms": "ESP32",
+    "version": "0.1.0"
 }

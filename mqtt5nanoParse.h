@@ -3,8 +3,7 @@
 
 #include "slices.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
 
     // After we parse a Pub/Sub packet we'll end up with a collection
     // of slices for the various parts.
@@ -12,26 +11,25 @@ namespace mqtt5nano
     // to construct all the packets.
     // Note that mqttPacketPieces does not own a buffer.
     // sizeof(mqttPacketPieces) is 100 bytes built by Arduino. slices are 8 bytes.
-    struct mqttPacketPieces
-    {
+    struct mqttPacketPieces {
         slice TopicName;
         slice Payload;
 
-        slice RespTopic;     // one prop
+        slice RespTopic; // one prop
         slice CorrelationData;
         static const int userKeyValLen = 16;
         slice UserKeyVal[userKeyValLen]; // user props. 8 pairs max. no hash table.
         // ignore additional props.
-        // TODO: make UserKeyVal into the usual badjson:Segment linked list. 
+        // TODO: make UserKeyVal into the usual badjson:Segment linked list.
         // however, then  we would have to free the list.
 
-        unsigned short int PacketID; // not a nonce
+        unsigned short int PacketID; // not a nonc
         char QoS;                    // used by sub, parsed. not implemented
         unsigned char packetType;
 
         slice props; // the whole properties block.
 
-        mqttPacketPieces(){
+        mqttPacketPieces() {
             reset();
         }
 
@@ -51,7 +49,7 @@ namespace mqtt5nano
         slice findKey(const char *key);
 
         // int UserKeyVal_len()
-        // {   // sorry about the C++'ism. Returns the length of the UserKeyVal array. ie 16 
+        // {   // sorry about the C++'ism. Returns the length of the UserKeyVal array. ie 16
         //     return *(&UserKeyVal + 1) - UserKeyVal;
         // }
     };
@@ -60,20 +58,17 @@ namespace mqtt5nano
      * mqttBuffer is much less usefull that I thought.
      * really thinking of dumping it. mqttBuffer1024 is just a buffer.
      **/
-    struct mqttBuffer
-    {
+    struct mqttBuffer {
     private:
         char *buffer;
         int size;
 
     public:
-        mqttBuffer(char *ptr, int _size)
-        {
+        mqttBuffer(char *ptr, int _size) {
             buffer = ptr;
             size = _size;
         }
-        slice getSlice()
-        {
+        slice getSlice() {
             slice s;
             s.base = buffer;
             s.start = 0;
@@ -81,8 +76,7 @@ namespace mqtt5nano
             return s;
         }
 
-        sink getSink()
-        {
+        sink getSink() {
             sink s;
             s.base = buffer;
             s.start = 0;
@@ -90,17 +84,17 @@ namespace mqtt5nano
             return s;
         };
 
-        slice loadHexString(const char *hexstr);   // return slice
-       // slice XXXloadFromFount(fount &f, int amount); // return slice
+        slice loadHexString(const char *hexstr); // return slice
+                                                 // slice XXXloadFromFount(fount &f, int amount); // return slice
     };
 
     struct mqttBuffer1024 : mqttBuffer // deprecate por favor
     {
     private:
         char buffer[1024];
+
     public:
-        mqttBuffer1024() : mqttBuffer(buffer, 1024)
-        {
+        mqttBuffer1024() : mqttBuffer(buffer, 1024) {
         }
     };
 
@@ -122,8 +116,7 @@ namespace mqtt5nano
 
     unsigned char getPropertyLenCode(int i);
 
-    enum PropKeyType
-    {
+    enum PropKeyType {
         propKeyPayloadFormatIndicator = 1, // byte, Packet: Will, Publish
         propKeyMessageExpiryInterval = 2,  // Uint (4 bytes), Packet: Will, Publish
         propKeyContentType = 3,            // utf-8, Packet: Will, Publish
@@ -169,4 +162,3 @@ namespace mqtt5nano
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-

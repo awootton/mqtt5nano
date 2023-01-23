@@ -5,44 +5,55 @@
 #include "commandLine.h"
 #include "eepromItem.h"
 
-namespace mqtt5nano
-{
-    struct getUptime : Command
-    {
-        void init() override
-        {
-            SetName("uptime");
-            SetDescription("return time since last reboot");
+#include "nanoCrypto.h"
+
+namespace mqtt5nano {
+
+    
+    struct getUptime : Command {
+
+        int starttime = 0;
+        void init() override {
+            name = "uptime";
+            description = "time since last reboot.";
+            starttime = latestNowMillis;
         }
-        void execute(badjson::Segment *words, badjson::Segment *params, drain &out) override
-        {
-            long now = latestNowMillis;
-            now = now / 1000;
-            int secords = now % 60;
-            now = now / 60;
-            int minutes = now % 60;
-            now = now / 60;
-            int hours = now;
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            long delta = latestNowMillis - starttime;
+            delta = delta / 1000;
+            int seconds = delta % 60;
+            delta = delta / 60;
+            int minutes = delta % 60;
+            delta = delta / 60;
+            int hours = delta;
             out.writeInt(hours);
             out.write(" hours ");
             out.writeInt(minutes);
             out.writeByte(':');
-            out.writeInt(minutes);
+            out.writeInt(seconds);
         }
     };
 
-    struct getServed : Command
-    {
-        void init() override
-        {
-            SetName("served");
-            SetDescription("count of requests served since reboot");
+    struct getServed : Command {
+        void init() override {
+            name = "served";
+            description = "count of requests served since reboot";
         }
-        void execute(badjson::Segment *words, badjson::Segment *params, drain &out) override
-        {
+        void execute(Args args, badjson::Segment *params, drain &out) override {
             out.writeInt(commandsServed);
         }
     };
+
+    struct getVersion : Command {
+        void init() override {
+            name = "version";
+            description = "mqtt5nano version";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            out.write("v0.1.0");
+        }
+    };
+
 }
 
 // Copyright 2022 Alan Tracey Wootton

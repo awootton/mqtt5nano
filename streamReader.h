@@ -1,37 +1,34 @@
 
 #pragma once
 
-#include "mockStream.h"
-#include "slices.h"
+#include "nanoCommon.h"
 #include "badjson.h"
 #include "commandLine.h"
+#include "mockStream.h"
+#include "slices.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
     /**  This is just another implementation of
      * the Usual Serial.read() that buffers the bytes up
      * until there's a whole command.
      * And then it parses the line into words and then passes it to the commands.
      */
 
-    struct StreamDrain : drain
-    {
+    struct StreamDrain : drain {
         Stream *sP = nullptr;
-        StreamDrain( Stream &streams)
-        :sP(&streams){
+        StreamDrain(Stream &streams)
+            : sP(&streams) {
         }
-        StreamDrain(){}
-        
-        bool writeByte(char c) override
-        {
+        StreamDrain() {}
+
+        bool writeByte(char c) override {
             int amt = sP->print(c);
             bool ok = amt == 1;
             return ok;
         };
     };
 
-    struct streamReader
-    {
+    struct streamReader {
         sink ourBuffer;
         Stream *sP;
         StreamDrain adrain;
@@ -39,33 +36,30 @@ namespace mqtt5nano
         static const int readBufferSize = 1024;
         char readbuffer[readBufferSize];
 
-        streamReader(){
+        streamReader() {
             setup();
         }
 
-        void setup(){
-             ourBuffer.base = readbuffer;
+        void setup() {
+            ourBuffer.base = readbuffer;
             ourBuffer.start = 0;
             ourBuffer.end = readBufferSize;
             readbuffer[readBufferSize - 1] = 0;
         }
 
-        // streamReader(char *buffer, int bufflen) 
+        // streamReader(char *buffer, int bufflen)
         // {
         //     ourBuffer.base = readbuffer;
         //     ourBuffer.start = 0;
         //     ourBuffer.end = readBufferSize;
         //     buffer[readBufferSize - 1] = 0;
         // }
-        virtual slice haveEnough()
-        {
-            if (ourBuffer.start)
-            {
+        virtual slice haveEnough() {
+            if (ourBuffer.start) {
                 char c = ourBuffer.base[ourBuffer.start - 1];
-                if (c == '\n' || c == '\r')
-                {
+                if (c == '\n' || c == '\r') {
                     slice newSlice(ourBuffer.base, 0, ourBuffer.start - 1); // don't pass the \n
-                    ourBuffer.start = 0;// reset
+                    ourBuffer.start = 0;                                    // reset the buffer
                     return newSlice;
                 }
             }
@@ -73,31 +67,28 @@ namespace mqtt5nano
         }
         virtual void execute(slice cmd) // override me ?
         {
-            //sP->print("received command: ");
-            //sP->println(cmd.base);
+            // sP->print("received command: ");
+            // sP->println(cmd.base);
             badjson::ResultsTriplette chopped = badjson::Chop(cmd.base + cmd.start, cmd.size());
-            if (chopped.error == nullptr)
-            { // process command line
-                process(chopped.segment,nullptr, adrain);
-            }
-            else
-            {
+            if (chopped.error == nullptr) { // process command line
+                Command::process(chopped.segment, nullptr, adrain);
+            } else {
                 adrain.write(chopped.error);
                 adrain.write("\n");
             }
+            delete chopped.segment;
         }
-        void loop(class Stream &s)
-        {
+        void loop(long now, class Stream &s) {
             sP = &s;
             adrain.sP = &s;
-            while (s.available())
-            {
+            while (s.available()) {
+                // fixme call pipeline aka layers.
                 char c = s.read();
                 ourBuffer.writeByte(c);
                 slice cmd = haveEnough();
-                if (!cmd.empty())
-                {
-                    execute(cmd);
+                if (!cmd.empty()) {
+                    moreScrambled(now);
+                    execute(cmd); 
                 }
             }
         }

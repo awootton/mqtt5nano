@@ -1,7 +1,9 @@
+/** This is not copyright by me. Portions are from libsodium.
+ */
 
 #include "crypto/curve25519.h"
 
-namespace knotcrypto
+namespace nanocrypto
 {
 
 #ifndef CRYPTO_ALIGN
@@ -1700,7 +1702,7 @@ namespace knotcrypto
     static void
     ge25519_cmov8_base(ge25519_precomp *t, const int pos, const signed char b)
     {
-        static const ge25519_precomp base[32][8] = {
+        static const ge25519_precomp PROGMEM base[32][8] = {
         /* base[i][j] = { (j+1)*256^i*B  */
 // #ifdef HAVE_TI_MODE
 // # include "fe_51/base.h"

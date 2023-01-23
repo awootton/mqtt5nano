@@ -1,14 +1,21 @@
 
-
 #if defined(ARDUINO)
+
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#elif defined(ESP32)
 #include <WiFi.h>
+#else
+#error "This ain't a ESP8266 or ESP32, dumbo!"
+#endif
+
 #else
 
 // else we mock it.
-#include <iostream>
-#include <string>
 #include <arpa/inet.h>
+#include <iostream>
 #include <stdio.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -16,12 +23,23 @@
 
 #include "slices.h"
 
+#include <cstdlib>
+#include <string>
+
 using namespace std;
 
 #pragma once
 
-typedef enum
-{                       // from ESP8266WiFiType.h
+class espClass {
+public:
+    int getFreeHeap() {
+        return 0;
+    }
+};
+
+extern espClass ESP;
+
+typedef enum {          // from ESP8266WiFiType.h
     WIFI_MODE_NULL = 0, /**< null mode */
     WIFI_MODE_STA,      /**< WiFi station mode */
     WIFI_MODE_AP,       /**< WiFi soft-AP mode */
@@ -29,8 +47,7 @@ typedef enum
     WIFI_MODE_MAX
 } wifi_mode_t;
 
-typedef enum
-{
+typedef enum {
     WL_NO_SHIELD = 255, // for compatibility with WiFi Shield library
     WL_IDLE_STATUS = 0,
     WL_NO_SSID_AVAIL = 1,
@@ -47,24 +64,20 @@ typedef enum
 #define WIFI_AP WIFI_MODE_AP
 #define WIFI_AP_STA WIFI_MODE_APSTA
 
-struct IPAddress
-{
+struct IPAddress {
     unsigned char parts[4];
-    IPAddress(int a, int b, int c, int d)
-    {
+    IPAddress(int a, int b, int c, int d) {
         parts[0] = a;
         parts[1] = b;
         parts[2] = c;
         parts[3] = d;
     }
-    uint8_t operator[](int index) const
-    {
+    uint8_t operator[](int index) const {
         return parts[index];
     }
 };
 
-struct mockWiFi
-{
+struct mockWiFi {
 
     // eg.
     //   WiFi.mode(WIFI_STA);
@@ -72,36 +85,57 @@ struct mockWiFi
     //   while (WiFi.status() != WL_CONNECTED)
     //   WiFi.localIP()
 
-    const char *saved_ssid;
-    const char *saved_passphrase;
+    bool haveBegin = false;
+    const char *saved_passphrase = nullptr;
 
-    bool mode(wifi_mode_t m)
-    {
+    bool mode(wifi_mode_t m) {
         return true;
     }
 
-    wl_status_t begin(const char *ssid, const char *passphrase)
-    {
-        saved_ssid = ssid;
-        saved_passphrase = passphrase;
+    std::string macAddress() {
+        return "hello";
+    }
+
+    void disconnect() {
+    }
+
+    int scanNetworks() {
+        return 0;
+    }
+
+    std::string SSID(int i) {
+        return "woo";
+    }
+    int RSSI(int i) {
+        return 0;
+    }
+
+    wl_status_t begin(const char *ssid, const char *passphrase) {
+        if (ssid == nullptr) {
+            return WL_NO_SSID_AVAIL;
+        }
+        if (passphrase == nullptr) {
+            return WL_NO_SSID_AVAIL;
+        }
+        if (!slice(ssid).equals("woot2")) {
+            return WL_NO_SSID_AVAIL;
+        }
+        if (!slice(passphrase).equals("word4word")) {
+            return WL_NO_SSID_AVAIL;
+        }
+        haveBegin = true;
         return status();
     }
 
-    wl_status_t status()
-    {
-        if (strlen(saved_ssid) == 0)
-        {
-            return WL_NO_SSID_AVAIL;
-        }
-        if (strlen(saved_passphrase) == 0)
-        {
+    wl_status_t status() {
+
+        if (!haveBegin) {
             return WL_NO_SSID_AVAIL;
         }
         return WL_CONNECTED;
     }
 
-    const IPAddress localIP()
-    {
+    const IPAddress localIP() {
         return IPAddress(1, 2, 3, 4);
     }
 };
@@ -110,87 +144,104 @@ extern mockWiFi WiFi;
 
 struct CoutDrain2 : mqtt5nano::drain // for the examples output to cout
 {
-    bool writeByte(char c) override
-    {
+    bool writeByte(char c) override {
         std::cout << c;
         bool ok = true;
         return ok;
     };
 };
-// CoutDrain2 my_cout_drain;
+
+// extern CoutDrain2 my_cout_drain;
 
 // TODO: we could actually make this work instead of being a stub.
-struct mockWiFiClientBuffers : Stream
-{
+struct mockWiFiClientBuffers : Stream {
     //  eg.  if (!client.connect(host, port))
     // client.print("GET / HTTP/1.1\r\nHost: ");
     // client.available()
     // client.readStringUntil('\r') not used
     // client.stop();
 
-    int client_fd;
+    int client_fd = -1;
     char got;
     bool have = false;
 
-    CoutDrain2  output;
+    mqtt5nano::slice *source;
+    mqtt5nano::drain *output;
 
-    char buff[16000];
-    mqtt5nano::slice  source;//(buff,0,0);
+    mqtt5nano::slice emptySlice;
+    mqtt5nano::VoidDrain emptyDrain;
 
+    mockWiFiClientBuffers() {
+        source = &emptySlice;
+        output = &emptyDrain; // never full
+    }
 
-    bool connected()
-    {
+    bool connected() {
         return client_fd != -1; // Let's remember this doesn't actually work.
     }
 
     // can't call this connect becaause it conflicts with connect
-    int xconnect(const char *host, uint16_t port)
-    {  
+    int xconnect(const char *host, uint16_t port) {
         client_fd = 12345;
 
-        return 11;
+        return 123;
     }
 
-    char read()
-    {
-        char c = source.base[source.start++];
+    char read() override {
+        char c = source->base[source->start++];
         return c;
     }
 
-    void print(char c)
-    {
-        output.writeByte(c);
+    size_t print(char c) override {
+        bool ok = output->writeByte(c);
+        return ok ? 1 : 0;
     }
 
-    void write(const char *cP)
-    {
-        output.write(cP);
+    void write(uint8_t c) {
+        output->writeByte(c);
     }
-    // int print(const char *cP)
-    // {
-    //     int slen = send(sock, &cP, strlen(cP), 0);
+    void write(char c) {
+        output->writeByte(c);
+    }
+
+    void write(const char *cP) {
+        output->write(cP);
+    }
+    size_t print(const char *dp) override {
+        mqtt5nano::slice s(dp);
+        output->write(s);
+        return s.size();
+    }
+    size_t println() override {
+        output->writeByte('\n');
+        return 1;
+    }
+    size_t println(const char *dp) override {
+        mqtt5nano::slice s(dp);
+        output->write(s);
+        output->writeByte('\n');
+        return s.size() + 1;
+    }
+
+    int available() override {
+        return source->size();
+    }
+
+    void setNoDelay(bool d) {
+    }
+    void flush() {
+    }
+
+    void fillChar() {
+    }
+
+    // int available() {
+    //     if (source->empty()) {
+    //         return 0;
+    //     }
+    //     return 1;
     // }
-
-    void setNoDelay(bool d)
-    {
-    }
-    void flush()
-    {
-    }
-
-    void fillChar()
-    {
-    }
-
-    int available()
-    {
-       if ( source.empty() ){
-         return 0;
-       }
-       return 1;
-    }
-    bool stop()
-    {
+    bool stop() {
         // if (client_fd != -1)
         // {
         //     close(client_fd);
@@ -200,8 +251,8 @@ struct mockWiFiClientBuffers : Stream
     }
 };
 
-struct mockWiFiClientTcp : Stream
-{
+// this would need the rest of the Stream virtual functions.
+struct mockWiFiClientTcp : Stream {
     //  eg.  if (!client.connect(host, port))
     // client.print("GET / HTTP/1.1\r\nHost: ");
     // client.available()
@@ -209,24 +260,20 @@ struct mockWiFiClientTcp : Stream
     // client.stop();
 
     int sock;
-    int client_fd;
+    int client_fd = -1;
     char got;
     bool have = false;
 
-    bool connected()
-    {
+    bool connected() {
         return client_fd != -1; // Let's remember this doesn't actually work.
     }
 
     // can't call this connect becaause it conflicts with connect
-    int xconnect(const char *host, uint16_t port)
-    {
-        if (WiFi.status() != WL_CONNECTED)
-        {
+    int xconnect(const char *host, uint16_t port) {
+        if (WiFi.status() != WL_CONNECTED) {
             return -1;
         }
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        {
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             printf("\n Socket creation error \n");
             sock = 0;
             return -1;
@@ -245,21 +292,19 @@ struct mockWiFiClientTcp : Stream
         return sock;
     }
 
-    char read()
-    {
+    char read() {
         char result = got;
         have = false;
         fillChar();
         return result;
     }
 
-    void print(char c)
-    {
+    size_t print(char c) {
         int slen = send(sock, &c, 1, 0);
+        return slen;
     }
 
-    void write(const char *cP)
-    {
+    void write(const char *cP) {
         int slen = send(sock, &cP, strlen(cP), 0);
     }
     // int print(const char *cP)
@@ -267,17 +312,13 @@ struct mockWiFiClientTcp : Stream
     //     int slen = send(sock, &cP, strlen(cP), 0);
     // }
 
-    void setNoDelay(bool d)
-    {
+    void setNoDelay(bool d) {
     }
-    void flush()
-    {
+    void flush() {
     }
 
-    void fillChar()
-    {
-        if (have)
-        {
+    void fillChar() {
+        if (have) {
             return;
         }
         char c = 0;
@@ -286,42 +327,30 @@ struct mockWiFiClientTcp : Stream
         // n == 0 mean socket was closed
         // n == -1 means no data received
 
-        if (n == 1)
-        {
+        if (n == 1) {
             have = true;
             got = c;
-        }
-        else if (n == 0)
-        {
+        } else if (n == 0) {
             stop(); // we disconnected
-        }
-        else if (n == -1)
-        {
+        } else if (n == -1) {
             // nothing.
-        }
-        else
-        {
+        } else {
             // idk
         }
     }
 
-    int available()
-    {
-        if ((client_fd == -1) || (sock = -1))
-        {
+    int available() {
+        if ((client_fd == -1) || (sock = -1)) {
             return 0;
         }
         fillChar();
-        if (have)
-        {
+        if (have) {
             return 1;
         }
         return 0;
     }
-    bool stop()
-    {
-        if (client_fd != -1)
-        {
+    bool stop() {
+        if (client_fd != -1) {
             close(client_fd);
         }
         client_fd = -1;
@@ -330,36 +359,40 @@ struct mockWiFiClientTcp : Stream
 };
 
 // Because we can't call inet connect inside a method named connect!
-struct WiFiClient : mockWiFiClientBuffers
-{
-    int connect(const char *host, uint16_t port)
-    {
+struct WiFiClient : mockWiFiClientBuffers {
+
+    WiFiClient() {
+    }
+
+    int connect(const char *host, uint16_t port) {
         return xconnect(host, port);
     }
-    bool operator==(const WiFiClient &rhs)
-    {
+    bool operator==(const WiFiClient &rhs) {
         return client_fd == rhs.client_fd; // not how it really works
     }
+
+    // WiFiClient *operator=(const WiFiClient &other) {
+    //     // WiFiClient *another = new (WiFiClient);
+    //     // another->client_fd = other.client_fd;
+    //     // another->output = other.output;
+    //     return &other;// another;
+    // }
 };
 
-// extern mockWiFiClient2 WiFiClient;
-
-struct WiFiServer
-{
+struct WiFiServer {
 
     WiFiClient client1;
-    WiFiClient client2;
+    // WiFiClient client2;
 
-    WiFiServer(int port)
-    {
+    WiFiServer(int port) {
     }
 
-    void begin()
-    {
+    void begin() {
+        client1.client_fd = 0;
     }
+
     // WiFiClient client = server.available();
-    WiFiClient available()
-    {
+    WiFiClient available() {
         return client1;
     }
 };

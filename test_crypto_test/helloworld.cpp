@@ -2,13 +2,13 @@
 
 #include <string.h>
 
-#include "knotbase64.h"
+#include "nanobase64.h"
 #include "slices.h"
 
-#include "crypto.h"
+#include "nanoCrypto.h"
 
 using namespace std;
-using namespace knotcrypto;
+using namespace nanocrypto;
 
 int main()
 {

@@ -1,13 +1,26 @@
 
 
-#pragma once 
+#pragma once
+
+const char *hostName(int i);
+void removeQuery();
+void mdnsUpdate();
 
 #if defined(ARDUINO)
+
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#elif defined(ESP32)
 #include <ESPmDNS.h>
+#else
+#error "This ain't a ESP8266 or ESP32, dumbo!"
+#endif
+
 #else
 
 // This is a mock. The real one is in #include <ESPmDNS.h>
-// example: 
+// example:
 // if (MDNS.begin("esp32"))
 //   {
 //     MDNS.setInstanceName("count server demo");
@@ -19,17 +32,38 @@
 
 struct mockMdns {
 
-    bool begin( const  char * hostname){
-        return true;
-    }
-    void setInstanceName(const char * name){
+    void update() {}
 
-    }
-    bool addService( const char * str1, const  char * str2, int port){
+    bool begin(const char *hostname) {
         return true;
     }
-    bool addServiceTxt( const char * str1, const char * str2, const char * str3, const  char * str4){
+    void setInstanceName(const char *name) {
+    }
+    bool addService(const char *str1, const char *str2, int port) {
         return true;
+    }
+    bool addServiceTxt(const char *str1, const char *str2, const char *str3, const char *str4) {
+        return true;
+    }
+
+    int queryService(const char *p, const char *s) { // http", "tcp");
+        return 3;
+    }
+
+    const char *names[4] = {
+        "XFINITY",
+        "DccWiFi",
+        "woot2",
+        "Lovett2"};
+
+    const char *answerHostname(int u) {
+        if (u >= 0 && u < 4) {
+            return names[u];
+        }
+        return "";
+    }
+
+    void removeQuery() {
     }
 };
 

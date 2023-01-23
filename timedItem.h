@@ -2,78 +2,89 @@
 
 #pragma once
 
-namespace mqtt5nano
-{
-    /** This gadget is used to do stuff link 'blink' without calling sleep()
-     * There are many explanations of how to acomplsh this on the web.
+namespace mqtt5nano {
+    /** TimedItem is used to do thinks like "blink without calling sleep()"
+     * There are many explanations of how to accomplish this on the web.
      * I like to do it like this because it's more organized.
-     * It's fluffy but hard to get wrong. 
+     * It's fluffy but hard to get wrong.
      * Here's an example of how to use it:
-     * 
-        #include <knotfree.h> // include it.
-
-        #define LED_BUILTIN 2 // for ESP32
-
-        struct blinker : mqtt5nano::TimedItem { // define it
-            bool isOn = false;
-            void init() override {
-                SetInterval(1200);// 1.2 second
-            }
-            void execute() override {
-                if ( isOn ){
-                    digitalWrite(LED_BUILTIN, LOW);
-                } else {
-                    digitalWrite(LED_BUILTIN, HIGH);
-                }
-                isOn = ! isOn;
-            }
-        };
-        blinker myBlinker; // create it
-
-        void setup()
-        {
-            Serial.begin(115200);
-            delay(10);
-            Serial.println("hello wifi commands test");
-            pinMode(LED_BUILTIN, OUTPUT);
-        }
-
-        void loop()
-        {
-            myBlinker.loop(millis()); // call it
-        }
+     *
+        todo: atw
      *
      */
 
-    struct TimedItem
-    {
-        unsigned long interval = 1000; // 1 second is the default
-        unsigned long nextEvent = 0;
+    struct TimedItem {
+    private:
+        void linkToHead();
+        TimedItem *nextTimer = nullptr;
+        unsigned long nextEventTime = 0;
+        bool isWaitingInfinity = false;
 
-        TimedItem() {}
-        TimedItem(unsigned long i)
-        {
+    public:
+        unsigned long intervalOn = 1000;  // 1 second is the default
+        unsigned long intervalOff = 1000; // 1 second is the default
+        bool isOn = false;
+
+        unsigned int count = 0;
+
+        TimedItem() {
+            linkToHead();
+        }
+        TimedItem(unsigned long i) {
+            linkToHead();
             SetInterval(i);
         }
-        void SetInterval(unsigned long i)
-        {
-            interval = i;
+        // SetInterval sets a period for the callback. For people who don't care about on and off.
+        void SetInterval(unsigned long i) {
+            SetOnInterval(i);
+            SetOffInterval(i);
+        }
+        // SetOnInterval sets an interval for just the on portion of the cycle.
+        // 0 means on forever.
+        void SetOnInterval(unsigned long i) {
+            // if it's off forever, turn it on
+            if (isWaitingInfinity && i != 0) {
+                isWaitingInfinity = 0;
+                nextEventTime = 0; // will trigger state change next loop
+            }
+            intervalOn = i;
+        }
+        // SetOnInterval sets an interval for just the off portion of the cycle.
+        // 0 means off forever.
+        void SetOffInterval(unsigned long i) {
+            // if it's on forever, turn it off
+            if (isWaitingInfinity && i != 0) {
+                isWaitingInfinity = 0;
+                nextEventTime = 0; // will trigger state change next loop
+            }
+            intervalOff = i;
         }
         virtual void init(){};
         virtual void execute() = 0;
-        void loop(unsigned long now)
-        {
-            if (nextEvent == 0)
-            {
-                nextEvent = now;
+
+    private:
+        void loop(unsigned long now) {
+            if (nextEventTime == 0) {
+                nextEventTime = now;
             }
-            long delta = nextEvent - now;
-            if (delta < 0)
-            {
+            long delta = nextEventTime - now;
+            if (delta <= 0) {
+                bool wasOn = isOn;
+                isOn = !isOn;
                 execute();
-                nextEvent += interval;
+                unsigned long tmp = isOn ? intervalOn : intervalOff;
+                if (tmp == 0) {
+                    tmp = (unsigned long)1000 * 60 * 60 * 24 * 365 * 10; // ten years
+                    isWaitingInfinity = true;
+                }
+                nextEventTime += tmp;
+                count++;
             }
         }
+
+    public:
+        // LoopAll will call the loop of every timer
+        static void LoopAll(unsigned long now);
     };
 }
 

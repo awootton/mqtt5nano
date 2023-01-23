@@ -1,10 +1,10 @@
 
 
-#if defined(ARDUINO)
-#include <EEPROM.h>
-#else
-
 #include "mockEEPROM.h"
+
+#if defined(ARDUINO)
+ 
+#else
 
 mockEEPROM EEPROM;
 
@@ -24,6 +24,3 @@ mockEEPROM EEPROM;
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-

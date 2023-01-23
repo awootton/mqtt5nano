@@ -1,18 +1,16 @@
 
-#include "crypto.h"
+#include "nanoCrypto.h"
 
 #define HASH_LENGTH 32
 #define BLOCK_LENGTH 64
 
 #define BUFFER_SIZE 64
 
-#define PROGMEM
-
 #define pgm_read_dword(p) (*(p))
 
 #include <stdint.h>
 
-namespace knotcrypto
+namespace nanocrypto
 {
 
     const uint32_t sha256K[] PROGMEM = {

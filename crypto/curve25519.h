@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdint.h>
 
-namespace knotcrypto
+namespace nanocrypto
 {
 
     extern int crypto_scalarmult_curve25519_ref10(unsigned char *q, const unsigned char *n,

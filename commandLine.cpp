@@ -1,92 +1,93 @@
 
 #include "commandLine.h"
-#include "badjson.h"
 
 #include <string.h> // has strcmp
 
-namespace mqtt5nano
-{
+#include "badjson.h"
 
-    long latestNowMillis = 0;
+namespace mqtt5nano {
 
     Command *head = 0;
 
-    Command *getHead()
-    {
+    Command *
+    getHead() {
         return head;
     }
 
-    Command::Command(const char *name, const char *decription) : name(name), description(decription)
-    {
+    Command::Command() {
         next = head;
         head = this;
-        // init();// can't not virtual, lazy init below
     }
 
-    Command::Command()
-    {
-        next = head;
-        head = this;
-        // init();// can't not virtual
-    }
-
-    void Command::execute(badjson::Segment *words, badjson::Segment *params, drain &out)
-    {
+    void
+    Command::execute(Args args, badjson::Segment *params, drain &out) {
         out.write("override me");
     }
 
-    // this returns true if the shorter segemnt list matches the beginning of the other
-    bool matchSegments(badjson::Segment &seg1, badjson::Segment &incomingCommandLine)
-    {
+    // this returns true if the seg1 segment list matches the beginning of the
+    // incomingCommandLine
+    bool
+    matchSegments(badjson::Segment &seg1, badjson::Segment &incomingCommandLine) {
         badjson::Segment *s1 = &seg1;
         badjson::Segment *s2 = &incomingCommandLine;
-        while (s1 != nullptr && s2 != nullptr)
-        {
-            if (s1->input.equals(s2->input) == false)
-            {
+        while (s1 != nullptr && s2 != nullptr) {
+            if (s1->input.equals(s2->input) == false) {
                 return false;
             }
             s1 = s1->Next();
             s2 = s2->Next();
         }
-        if (s2 == nullptr)
-        { // we used the whole command line
+        if (s2 == nullptr) { // we used the whole command line
             // then we should have used the whole command also
             // if we didn't then they don't really match.
-            if (s1 == nullptr)
-            {
+            if (s1 == nullptr) {
                 // ok
-            }
-            else
-            {
+            } else {
                 return false;
             }
         }
         return true;
     }
 
-    struct helpCommand : Command
-    {
-        void init() override
-        {
-            SetName("help");
-            SetDescription("shows the description of every command");
+    class HelpCommand : Command {
+        // friend class Command;
+
+    public:
+        void
+        init() override {
+            name = "help";
+            description = "the description of every command";
         }
-        void execute(badjson::Segment *words, badjson::Segment *params, drain &out) override
-        {
+        void
+        execute(Args args, badjson::Segment *params, drain &out) override {
             Command *cmd = getHead();
-            while (cmd)
-            {
+            while (cmd) {
                 // out.write(cmd->name);
-                ToString(*cmd->parsed, out);
-                out.write(" : ");
-                out.write(cmd->description);
-                if (cmd->next)
-                {
-                    out.write("\n");
+                // this one quotes the words and I don't like that
+                // ToString(*cmd->parsed, out);
+                out.write("[");
+                badjson::Segment *s = cmd->parsed;
+                while (s != nullptr) {
+                    out.write(s->input);
+                    s = s->nexts;
+                    if (s != nullptr) {
+                        out.write(" ");
+                    }
                 }
-                else
-                {
+                out.write("]");
+                if (cmd->argumentCount != 0) {
+                    out.write(" +");
+                    out.writeInt(cmd->argumentCount);
+                }
+                out.write(" ");
+                const char *desc = cmd->description;
+                if (desc == nullptr) {
+                    desc = cmd->name;
+                }
+                out.write(desc);
+                if (cmd->next) {
+                    out.write("\n");
+                } else {
                     out.write("\n"); // TODO: get it right.
                 }
                 cmd = cmd->next;
@@ -94,73 +95,73 @@ namespace mqtt5nano
         }
     };
 
-    helpCommand helpme;
+    HelpCommand helpcmd;
 
     int commandsServed = 0;
 
     // precess walks through the list of command looking for a match
     // Note that we execute all the matches even if more than one.
-    void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out)
-    {
+    void
+    Command::process(badjson::Segment *incomingCommandLine,
+                     badjson::Segment *params, drain &out) {
+        // out.write("# Command::process");
         Command *command = head;
-        bool foundOne = false;
-        while (command != nullptr)
-        {
-            if (command->name[0] == 0)
-            { // lazy init
+        while (command != nullptr) {
+            if (command->name[0] == 0) { // lazy init
                 command->init();
-                command->parseTheName();
+                command->parseTheName();// allocs memory.
             }
-            if (matchSegments(*command->parsed, *incomingCommandLine))
-            { // we don't want to pass the command to the execute, just the args
+            command = command->next;
+        }
+        command = head;
+        bool foundOne = false;
+        while (command != nullptr) {
+            if (matchSegments(*command->parsed, *incomingCommandLine)) { // we don't want to pass the command to
+                // the execute, just the args
                 // I could rig matchSegments fins args but that's a hack.
                 badjson::Segment *args = incomingCommandLine;
                 badjson::Segment *tmp = command->parsed;
-                while (tmp)
-                { // walk the list
+                while (tmp) { // walk the list
                     tmp = tmp->nexts;
                     args = args->nexts;
-                    if (args == nullptr)
-                    {
+                    if (args == nullptr) {
                         break;
                     }
                 }
                 foundOne = true;
-                command->execute(args, params, out);
-                commandsServed ++;
+                command->execute(Args(args), params, out);
+                commandsServed++;
+                // do we have to? this fucks up favicon: 
                 out.write("\n");
             }
             command = command->next;
         }
-        if (foundOne == false)
-        {
+        if (foundOne == false) {
             out.write("Command not found:\n");
             badjson::ToString(*incomingCommandLine, out);
             out.write("\n");
             out.write("See help for available commands:\n");
-            helpme.execute(incomingCommandLine, nullptr, out);
+            helpcmd.execute(Args(incomingCommandLine), nullptr, out);
         }
     }
 
-    void Command::parseTheName() // since the name can be several words, chop it up.
+    void
+    Command::parseTheName() // since the name can be several words, chop it
+                            // up.
     {
-        if (name == nullptr)
-        {
+        if (name == nullptr) {
             return; // needs error
         }
-        if (strlen(name) == 0)
-        {
+        if (strlen(name) == 0) {
             return; // needs error
         }
-        if (parsed != nullptr)
-        {
+        if (parsed != nullptr) {
             return; // we already did it. dry.
         }
         badjson::ResultsTriplette res = badjson::Chop(name, strlen(name));
         parsed = res.segment;
     }
-
-}
+} // namespace mqtt5nano
 
 // Copyright 2022 Alan Tracey Wootton
 //

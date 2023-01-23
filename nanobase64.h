@@ -1,10 +1,9 @@
 
 
 // Headers? We don't need no stinking headers.
-#pragma once 
+#pragma once
 
-namespace base64
-{
+namespace base64 {
 
     // Encode the bytes from src[0] to src[srcLen] into dest.
     // dest has a size of destMax which must be greater than srcLen*4/3
@@ -25,10 +24,11 @@ namespace base64
 
     // isB64 returns true if c is one of the base64 chars.
     bool isB64(char c);
+
+    const char *getTable();
 }
 
-namespace hex
-{
+namespace hex {
     // Encode the bytes from src[0] to src[srcLen] into dest.
     // dest has a size of destMax which must be greater than srcLen*2
     // The number of bytes written is returned.
@@ -43,8 +43,7 @@ namespace hex
     bool isHex(char c);
 }
 
-namespace utf8
-{
+namespace utf8 {
 
     // DecodeRuneLengthInString returns the length of the uf8 char
     // at the pointer.

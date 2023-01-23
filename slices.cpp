@@ -2,23 +2,19 @@
 #include "slices.h"
 #include "nanobase64.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
 
-    const char * slice::emptyStr = "";
+    const char *slice::emptyStr = "";
 
-    slice::slice(sink s)
-    {
+    slice::slice(sink s) {
         base = s.base;
         start = 0;
         end = s.start;
     }
 
-    char *slice::gethexstr(char *buffer, int max)
-    {
+    char *slice::gethexstr(char *buffer, int max) {
         buffer[0] = 0;
-        if (empty())
-        {   
+        if (empty()) {
             buffer[0] = 0;
             return &buffer[0];
         }
@@ -27,10 +23,8 @@ namespace mqtt5nano
         return &buffer[0];
     };
 
-    void slice::gethexstr(sink dest)
-    {
-        if (empty())
-        {
+    void slice::gethexstr(sink dest) {
+        if (empty()) {
             return;
         }
         dest.writeByte(0);
@@ -38,18 +32,14 @@ namespace mqtt5nano
         dest.start += amt;
     };
 
-    char *slice::getCstr(char *buffer, int max)
-    {
-        if (empty() == false)
-        {
+    char *slice::getCstr(char *buffer, int max) {
+        if (empty() == false) {
             int amount = size();
-            if (amount + 1 > max)
-            {
+            if (amount + 1 > max) {
                 amount = max - 1;
             }
             int i = 0;
-            for (; i < amount; i++)
-            {
+            for (; i < amount; i++) {
                 (buffer)[i] = base[start + i];
             }
             buffer[i] = 0;

@@ -5,27 +5,28 @@
 
 using namespace mqtt5nano; // we'll use slices
 
-namespace badjson
-{
-    struct ResultsTriplette;// below
+namespace badjson {
+    struct ResultsTriplette; // below
+
+    extern int segmentsAllocated;
 
     // Chop is how we use the badjson parser.
     // pass a pointer to some text and the length
     // and it will pass back the first object of a linked list.
     ResultsTriplette Chop(const char *, int);
 
-    struct Segment // the virtual base class. Aka the interface.
-    {
+    // the virtual base class. Aka the interface.
+    struct Segment {
         Segment *nexts;
         slice input;
 
-        Segment()
-        {
+        Segment() {
+            segmentsAllocated++;
             input.base = nullptr;
             nexts = nullptr;
         }
-        virtual ~Segment()
-        {
+        virtual ~Segment() {
+            segmentsAllocated--;
             if (nexts)
                 delete nexts;
         }
@@ -38,23 +39,21 @@ namespace badjson
         virtual bool GetQuoted(drain &s);
         virtual bool Raw(drain &s);
         virtual Segment *GetChildren(); // always nullptr unless parent
-        virtual bool WasArray();        // if parent true means it was [] and false means {} 
+        virtual bool WasArray();        // if parent true means it was [] and false means {}
     };
 
     // Parent has a sub-list
-    struct Parent : Segment
-    {
+    struct Parent : Segment {
         Segment *children;
         bool wasArray; // eg. started with [ and not {
 
-        Parent()
-        {
+        Parent() {
+            //segmentsAllocated++;
             children = 0;
         }
-        virtual ~Parent()
-        {
-            if (children)
-            {
+        virtual ~Parent() {
+            //segmentsAllocated--;
+            if (children) {
                 delete (children);
             }
         };
@@ -66,8 +65,7 @@ namespace badjson
     };
 
     // RuneArray aka string
-    struct RuneArray : Segment
-    {
+    struct RuneArray : Segment {
         // bool hasEscape;
         // bool needsQuote;
 
@@ -75,12 +73,14 @@ namespace badjson
         char theQuote;
         bool hadQuoteOrSlash; // had double quote or '\' when scanned.
 
-        RuneArray()
-        {
+        RuneArray() {
             theQuote = 0;
             hadQuoteOrSlash = false;
+            //segmentsAllocated ++;
         }
-        virtual ~RuneArray(){};
+        virtual ~RuneArray(){
+            //segmentsAllocated--;
+        };
 
         // returns false if not ok.
         bool GetQuoted(drain &s) override;
@@ -89,20 +89,26 @@ namespace badjson
         bool WasArray() override;
     };
 
-    struct Base64Bytes : Segment
-    {
-        Base64Bytes() {}
-        virtual ~Base64Bytes(){};
+    struct Base64Bytes : Segment {
+        Base64Bytes() {
+            //segmentsAllocated++;
+        }
+        virtual ~Base64Bytes(){
+            //segmentsAllocated--;
+        };
         bool GetQuoted(drain &s) override;
         bool Raw(drain &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
 
-    struct HexBytes : Segment
-    {
-        HexBytes(){}
-         virtual ~HexBytes(){};
+    struct HexBytes : Segment {
+        HexBytes() {
+            //segmentsAllocated++;
+        }
+        virtual ~HexBytes(){
+            // segmentsAllocated--;
+        };
         bool GetQuoted(drain &s) override;
         bool Raw(drain &s) override;
         Segment *GetChildren() override;
@@ -110,8 +116,7 @@ namespace badjson
     };
 
     // ResultsTriplette is used because C++ can't return multiple values
-    struct ResultsTriplette
-    {
+    struct ResultsTriplette {
         Segment *segment;  // if nullptr there should be an error.
         int i;             // index in input string.
         const char *error; // usually null

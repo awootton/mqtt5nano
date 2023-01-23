@@ -3,5 +3,4 @@
 
 namespace mqtt5nano {
 
-
 }

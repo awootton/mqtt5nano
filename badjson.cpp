@@ -5,13 +5,13 @@
 
 #include "nanobase64.h"
 
-namespace badjson
-{
+namespace badjson {
 
     bool getJSONinternal(Segment &s, drain &dest, bool isArray);
 
-    struct Chopper
-    { // these are really just glorified local variables.
+    int segmentsAllocated = 0;
+
+    struct Chopper { // these are really just glorified local variables.
         const char *str;
         const char *endP;
         int i; // an index into the string in str
@@ -23,14 +23,11 @@ namespace badjson
         int runeLength;
         rune closer; // might be } or ] when recursing
 
-        void linkToTail(Segment &s)
-        {
-            if (!front)
-            {
+        void linkToTail(Segment &s) {
+            if (!front) {
                 front = &s;
             }
-            if (tail)
-            {
+            if (tail) {
                 tail->SetNext(&s);
             }
             tail = &s;
@@ -41,15 +38,12 @@ namespace badjson
 
         // closer will be } or ] when recursing.
         // it returns the head segment, a count of the chars used, and a possible error.
-        ResultsTriplette chop(const char *input, const char *inputEndP, rune acloser, int depth)
-        {
-            if (input >= inputEndP)
-            {
+        ResultsTriplette chop(const char *input, const char *inputEndP, rune acloser, int depth) {
+            if (input >= inputEndP) {
                 const char *err = "too short";
                 return ResultsTriplette(0, 0, err);
             }
-            if (depth >= 16)
-            {
+            if (depth >= 16) {
                 const char *err = "too deep";
                 return ResultsTriplette(0, 0, err);
             }
@@ -64,47 +58,34 @@ namespace badjson
             else
                 r = (char)-1; // must match nothing below.
 
-            while (true)
-            {
-                while (r == ' ')
-                {
-                    if (pop())
-                    {
+            while (true) {
+                while (r == ' ') {
+                    if (pop()) {
                         return ResultsTriplette(front, i, 0);
                     }
                 }
-                while (r == ',' || r == ':')
-                {
-                    if (pop())
-                    {
+                while (r == ',' || r == ':') {
+                    if (pop()) {
                         return ResultsTriplette(front, i, 0);
                     }
                 }
-                while (r == ' ')
-                {
-                    if (pop())
-                    {
+                while (r == ' ') {
+                    if (pop()) {
                         return ResultsTriplette(front, i, 0);
                     }
                 }
                 start = i; // the beginning of our 'token'
                            // use switch ?
-                if (r == closer)
-                {
+                if (r == closer) {
                     return ResultsTriplette(front, i, 0);
-                }
-                else if (r == '$')
-                {
-                    if (pop())
-                    {
+                } else if (r == '$') {
+                    if (pop()) {
                         start = i;
                         goto donehexarray; // output empty array
                     }
                     start = i;
-                    while (isHex())
-                    {
-                        if (pop())
-                        {
+                    while (isHex()) {
+                        if (pop()) {
                             break;
                         }
                     }
@@ -112,8 +93,7 @@ namespace badjson
                     HexBytes *hb = new HexBytes();
                     hb->input = currentString();
                     linkToTail(*hb);
-                }
-                else if (r == '"' || r == 39) // 39 is single quot
+                } else if (r == '"' || r == 39) // 39 is single quot
                 {
                     char quote = r;
                     if (pop())
@@ -121,29 +101,23 @@ namespace badjson
                     start = i;
                     // int escapeCount = 0;
                     bool hadQuoteOrSlash = false;
-                    while (r != quote)
-                    {
-                        if (r == '\\')
-                        {
+                    while (r != quote) {
+                        if (r == '\\') {
                             hadQuoteOrSlash = true;
                             if (pop()) // pass the /
                             {
                                 break;
                             }
-                            if (r == '\'')
-                            {
+                            if (r == '\'') {
                                 if (pop()) // pass the char
                                 {
                                     break;
                                 }
                             }
-                        }
-                        else if (r == '"')
-                        {
+                        } else if (r == '"') {
                             hadQuoteOrSlash = true;
                         }
-                        if (pop())
-                        {
+                        if (pop()) {
                             break;
                         }
                     }
@@ -155,32 +129,24 @@ namespace badjson
                     ra->theQuote = quote;
                     ra->hadQuoteOrSlash = hadQuoteOrSlash;
                     linkToTail(*ra);
-                    if (pop())
-                    {
+                    if (pop()) {
                         break;
                     }
-                }
-                else if (r == '=')
-                {
+                } else if (r == '=') {
                     slice b64slice;
-                    if (pop())
-                    {
+                    if (pop()) {
                         start = i;
                         goto doneb64array; // output empty array
                     }
                     start = i;
-                    while (isB64())
-                    {
-                        if (pop())
-                        {
+                    while (isB64()) {
+                        if (pop()) {
                             break;
                         }
                     }
                     b64slice = currentString();
-                    while (r == '=')
-                    { // pass any stupic  ='s at the end
-                        if (pop())
-                        {
+                    while (r == '=') { // pass any stupic  ='s at the end
+                        if (pop()) {
                             break;
                         }
                     }
@@ -188,25 +154,20 @@ namespace badjson
                     Base64Bytes *bb = new Base64Bytes();
                     bb->input = b64slice;
                     linkToTail(*bb);
-                }
-                else if (r == '{' || r == '[')
-                {
+                } else if (r == '{' || r == '[') {
                     char paren = r;
-                    if (pop())
-                    {
+                    if (pop()) {
                         break;
                     }
                     start = i;
                     char closewith = ']';
-                    if (paren == '{')
-                    {
+                    if (paren == '{') {
                         closewith = '}';
                     }
                     Chopper chopper;
                     ResultsTriplette results = chopper.chop(str + i, endP, closewith, depth + 1);
 
-                    if (results.error)
-                    {
+                    if (results.error) {
                         results.i += i; // atw fixme
                         return results;
                     }
@@ -215,27 +176,20 @@ namespace badjson
                     parent->children = results.segment;
                     parent->wasArray = paren == '[';
                     linkToTail(*parent);
-                    if (str + i >= endP)
-                    {
+                    if (str + i >= endP) {
                         return ResultsTriplette(front, i, 0);
                     }
-                    if (pop())
-                    {
+                    if (pop()) {
                         break;
                     }
-                }
-                else
-                { // default:
+                } else { // default:
                     // an unquoted string
                     bool hadQuoteOrSlash = false;
-                    while (r != ' ' && r != ':' && r != ',' && r != closer)
-                    {
-                        if (r == '"' || r == '\\')
-                        {
+                    while (r != ' ' && r != ':' && r != ',' && r != closer) {
+                        if (r == '"' || r == '\\') {
                             hadQuoteOrSlash = true;
                         }
-                        if (pop())
-                        {
+                        if (pop()) {
                             break;
                         }
                     }
@@ -257,66 +211,52 @@ namespace badjson
         // utility functions
 
         // advances the index and returns true if we're done here
-        bool pop()
-        {
+        bool pop() {
             i += runeLength;
-            if (str + i < endP)
-            {
+            if (str + i < endP) {
                 runeLength = utf8::DecodeRuneLengthInString((const unsigned char *)(str + i), endP - str);
                 if (runeLength == 1)
                     r = str[i];
                 else
                     r = (char)-1; // should match nothing
-            }
-            else
-            {
+            } else {
                 r = closer;
                 return true; // we're out of input
             }
             return done();
         }
-        bool done()
-        {
+        bool done() {
             return str + i >= endP || runeLength == 0;
         }
-        slice currentString()
-        {
+        slice currentString() {
             slice s(str, start, i);
             return s;
         }
-        bool isHex()
-        {
+        bool isHex() {
             return runeLength == 1 && hex::isHex(str[i]);
         }
-        bool isB64()
-        {
+        bool isB64() {
             return runeLength == 1 && base64::isB64(str[i]);
         }
     };
 
-    ResultsTriplette Chop(const char *inputLineOfText, int length)
-    {
+    ResultsTriplette Chop(const char *inputLineOfText, int length) {
 
         Chopper chopper;
         const char *endP = inputLineOfText + length;
         ResultsTriplette results = chopper.chop(inputLineOfText, endP, (char)0, 0);
-        if (results.error != nullptr)
-        {
+        if (results.error != nullptr) {
             return results;
         }
-        if (results.segment == nullptr)
-        {
+        if (results.segment == nullptr) {
             results.segment = new Segment();
             return results;
-        }
-        else if (results.segment->Next() == nullptr)
-        {
+        } else if (results.segment->Next() == nullptr) {
             // so it's just one Segment
             // is it a parent type? no dynamic cast in Arduino
             // denied: Parent *p = dynamic_cast<Parent *>(results.segment);
             Segment *children = results.segment->GetChildren();
-            if (children && results.segment->WasArray())
-            {
+            if (children && results.segment->WasArray()) {
                 // We don't care for the case when it's [ contents ] but not { contents }
                 // so we'll just change it to return the contents
                 results.segment = children;
@@ -326,31 +266,25 @@ namespace badjson
         // btw. Since we don't use the i in the ResultsTriplette we could make another type.
     }
 
-    bool Segment::GetQuoted(drain &s)
-    {
+    bool Segment::GetQuoted(drain &s) {
         return true;
     }
 
-    bool Segment::Raw(drain &s)
-    {
+    bool Segment::Raw(drain &s) {
         return true;
     }
 
-    bool Parent::GetQuoted(drain &s)
-    {
+    bool Parent::GetQuoted(drain &s) {
         bool ok = true;
-        if (children)
-        {
+        if (children) {
             bool ok = getJSONinternal(*children, s, wasArray);
         }
         return ok;
     }
 
-    bool Parent::Raw(drain &s)
-    {
+    bool Parent::Raw(drain &s) {
         bool ok = true;
-        if (children)
-        {
+        if (children) {
             bool ok = getJSONinternal(*children, s, wasArray);
         }
         return ok;
@@ -368,50 +302,38 @@ namespace badjson
             bool passed = false;
             const char *cP = b.input.base;
             int i = b.input.start;
-            while (i < b.input.end)
-            {
+            while (i < b.input.end) {
                 int runeLen = utf8::DecodeRuneLengthInString((const unsigned char *)(cP + i), b.input.end - i);
-                if (runeLen == 1)
-                {
+                if (runeLen == 1) {
                     char r = cP[i];
-                    if (r == '\\' && !passed)
-                    {
+                    if (r == '\\' && !passed) {
                         passed = true;
-                    }
-                    else
-                    {
+                    } else {
                         passed = false;
                         failed |= s.writeByte(cP[i]);
                     }
-                }
-                else
-                {
+                } else {
                     failed |= s.writeBytes(cP + i, runeLen);
                 }
                 if (failed)
                     break;
                 i += runeLen;
             }
-        }
-        else
-        {
+        } else {
             failed = s.write(b.input);
         }
         return failed;
     }
 
     // a good example of interating utf8 byes
-    int xxxNeedsEscape(RuneArray &b)
-    {
+    int xxxNeedsEscape(RuneArray &b) {
         int count = 0;
         const char *cP = b.input.base;
         int i = b.input.start;
-        while (i < b.input.end)
-        {
+        while (i < b.input.end) {
             int runeLen = utf8::DecodeRuneLengthInString((const unsigned char *)(cP + i), b.input.end - i);
             // break this up. it's too hard to read.
-            if (runeLen == 1 && cP[i] == '\\' || cP[i] == '\'' || cP[i] == '"')
-            {
+            if (runeLen == 1 && cP[i] == '\\' || cP[i] == '\'' || cP[i] == '"') {
                 count++;
             }
             i += runeLen;
@@ -420,17 +342,13 @@ namespace badjson
     }
 
     // EscapeDoubleQuotes outputs the string with all the \ and " having a \ before them
-    void EscapeDoubleQuotes(RuneArray &b, drain &s)
-    {
+    void EscapeDoubleQuotes(RuneArray &b, drain &s) {
         const char *cP = b.input.base;
         int i = b.input.start;
-        while (i < b.input.end)
-        {
+        while (i < b.input.end) {
             int runeLen = utf8::DecodeRuneLengthInString((const unsigned char *)(cP + i), b.input.end - i);
-            if (runeLen == 1)
-            {
-                if (cP[i] == '\\' || cP[i] == '"')
-                {
+            if (runeLen == 1) {
+                if (cP[i] == '\\' || cP[i] == '"') {
                     s.writeByte('\\');
                 }
             }
@@ -442,19 +360,14 @@ namespace badjson
     // EscapeDoubleQuotesUnSingle unescapes all the \' and escapes all the " and \
     // todo make combined routine to do EscapeDoubleQuotes depending on flag.
     // to save code.
-    void EscapeDoubleQuotesUnSingle(RuneArray &b, drain &s)
-    {
+    void EscapeDoubleQuotesUnSingle(RuneArray &b, drain &s) {
         const char *cP = b.input.base;
         int i = b.input.start;
-        while (i < b.input.end)
-        {
+        while (i < b.input.end) {
             int runeLen = utf8::DecodeRuneLengthInString((const unsigned char *)(cP + i), b.input.end - i);
-            if (runeLen == 1)
-            {
-                if (cP[i] == '\\' && (i + 1) < b.input.end)
-                { // skip the \ if followed by '
-                    if (cP[i + 1] == '\'')
-                    {
+            if (runeLen == 1) {
+                if (cP[i] == '\\' && (i + 1) < b.input.end) { // skip the \ if followed by '
+                    if (cP[i + 1] == '\'') {
                         i++;
                         continue;
                     }
@@ -466,30 +379,21 @@ namespace badjson
     }
 
     // String returns the JSON string. That is, it's double quoted and escaped.
-    bool RuneArray::GetQuoted(drain &s)
-    {
+    bool RuneArray::GetQuoted(drain &s) {
         s.writeByte('"');
-        if (this->theQuote == '"')
-        {
+        if (this->theQuote == '"') {
             // the original text was properly quoted already in the input.
             s.write(input);
-        }
-        else if (this->theQuote == '\'')
-        {
+        } else if (this->theQuote == '\'') {
             // we have to unescape all the single quotes and escape all the double q
             // on the fly!
             EscapeDoubleQuotesUnSingle(*this, s);
-        }
-        else
-        {
+        } else {
             // it was an unquoted string in the input
-            if (this->hadQuoteOrSlash)
-            {
+            if (this->hadQuoteOrSlash) {
                 // we have to escape the double quotes
                 EscapeDoubleQuotes(*this, s);
-            }
-            else
-            {
+            } else {
                 bool ok = s.write(input);
             }
         }
@@ -500,30 +404,20 @@ namespace badjson
     // FIXME: these are not finished
 
     // returns the unescaped string
-    bool RuneArray::Raw(drain &s)
-    {
-        if (this->theQuote == '"')
-        {
+    bool RuneArray::Raw(drain &s) {
+        if (this->theQuote == '"') {
             // it was quoted
-            if (hadQuoteOrSlash)
-            {
+            if (hadQuoteOrSlash) {
                 // we'll have to un escape it.
-            }
-            else
-            {
+            } else {
                 s.write(input);
             }
-        }
-        else if (this->theQuote == '\'')
-        {
-        }
-        else
-        {
+        } else if (this->theQuote == '\'') {
+        } else {
             // wasn't quoted.
         }
 
-        if (!this->theQuote)
-        {
+        if (!this->theQuote) {
             s.write(input);
             return true; // !s.full();
         }
@@ -531,39 +425,31 @@ namespace badjson
         return true;
     }
 
-    bool Base64Bytes::GetQuoted(drain &s)
-    {
+    bool Base64Bytes::GetQuoted(drain &s) {
         return true;
     }
 
-    bool Base64Bytes::Raw(drain &s)
-    {
+    bool Base64Bytes::Raw(drain &s) {
         return true;
     }
 
-    bool HexBytes::GetQuoted(drain &s)
-    {
+    bool HexBytes::GetQuoted(drain &s) {
         return true;
     }
 
-    bool HexBytes::Raw(drain &s)
-    {
+    bool HexBytes::Raw(drain &s) {
         return true;
     }
 
     // expresses a list of Segment's as JSON, Is the String() of the Parent object.
-    bool getJSONinternal(Segment &s, drain &dest, bool isArray)
-    {
+    bool getJSONinternal(Segment &s, drain &dest, bool isArray) {
         // what if s is null ?
         // eg. for debugging dest.write("in getJSONinternal\n");
         char oddDelimeter = ',';
         bool isok = true;
-        if (isArray)
-        {
+        if (isArray) {
             dest.writeByte('[');
-        }
-        else
-        {
+        } else {
             dest.writeByte('{');
             oddDelimeter = ':';
         }
@@ -573,33 +459,24 @@ namespace badjson
         // }
         int i;
         Segment *child = &s;
-        for (i = 0; child != nullptr; child = child->Next())
-        {
-            if (i != 0)
-            {
-                if ((i & 1) != 1)
-                {
+        for (i = 0; child != nullptr; child = child->Next()) {
+            if (i != 0) {
+                if ((i & 1) != 1) {
                     dest.writeByte(',');
-                }
-                else
-                {
+                } else {
                     dest.writeByte(oddDelimeter);
                 }
             }
 
             bool ok = child->GetQuoted(dest);
-            if (!ok)
-            {
+            if (!ok) {
                 return ok;
             }
             i++;
         }
-        if (isArray)
-        {
+        if (isArray) {
             dest.writeByte(']');
-        }
-        else
-        {
+        } else {
             dest.writeByte('}');
         }
         return true; // fixme collect actual errors
@@ -607,56 +484,44 @@ namespace badjson
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // todo: rename to ToJsString
-    bool ToString(Segment &segment, drain &dest)
-    {
+    bool ToString(Segment &segment, drain &dest) {
         bool ok = getJSONinternal(segment, dest, true);
         return ok;
     }
 
-    Segment *Segment::GetChildren()
-    {
+    Segment *Segment::GetChildren() {
         return 0;
     }
-    Segment *Parent::GetChildren()
-    {
+    Segment *Parent::GetChildren() {
         return children;
     }
-    Segment *RuneArray::GetChildren()
-    {
+    Segment *RuneArray::GetChildren() {
         return 0;
     }
-    Segment *Base64Bytes::GetChildren()
-    {
+    Segment *Base64Bytes::GetChildren() {
         return 0;
     }
-    Segment *HexBytes::GetChildren()
-    {
+    Segment *HexBytes::GetChildren() {
         return 0;
     }
 
-    bool Segment::WasArray()
-    {
+    bool Segment::WasArray() {
         return false;
     }
-    bool Parent::WasArray()
-    {
+    bool Parent::WasArray() {
         return wasArray;
     }
-    bool RuneArray::WasArray()
-    {
+    bool RuneArray::WasArray() {
         return false;
     }
-    bool Base64Bytes::WasArray()
-    {
+    bool Base64Bytes::WasArray() {
         return false;
     }
-    bool HexBytes::WasArray()
-    {
+    bool HexBytes::WasArray() {
         return false;
     }
 
 } // namespace
-
 
 // Copyright 2022 Alan Tracey Wootton
 //

@@ -6,40 +6,89 @@
 /** Command is the base class for all the command handlers.
  * All you have to do is declare one and it automatically gets
  * linked in with the rest of them.
- */  
-namespace mqtt5nano
-{
-    extern int commandsServed; 
+ */
+namespace mqtt5nano {
+    
+    extern int commandsServed;
     extern long latestNowMillis;
 
-    struct Command // the virtual base class. Aka the interface.
-    {
-        Command *next;
-        const char *name = "";
-        const char *description = "";
-        badjson::Segment *parsed = nullptr;
-
-        Command();
-        Command(const char *name, const char *decription);
-        void SetName(const char *name)
-        {
-            this->name = name;
-            parseTheName();
-        }
-        void SetDescription(const char *desc)
-        {
-            this->description = desc;
-        }
-        // params are key val key val etc.
-        virtual void execute(badjson::Segment *words,badjson::Segment *params, drain &out);
-        virtual void init(){};
-        void parseTheName();// since the name can be several words, chop it up
+    struct permissionType {
+        bool notAllowed;
+        bool requiresEncryption;
     };
 
-    // serial and now?
-    void process(badjson::Segment *words, badjson::Segment *params,drain &out);
+    struct PermissionGroup {
+        permissionType Serial;     // permissions to receive commands from the Serial port.
+        permissionType Local;      // permissions to receive commands from the local network.
+        permissionType Everywhere; // // permissions to receive commands from the internet.
+    };
 
-    Command * getHead();
+    struct Args {
+    private:
+        badjson::Segment *in;
+
+    public:
+        Args(badjson::Segment *incomingCommandLine) {
+            in = incomingCommandLine;
+        }
+        int count() {
+            int c = 0;
+            badjson::Segment *s = in;
+            while (s != nullptr) {
+                c++;
+                s = s->nexts;
+            }
+            return c;
+        }
+        slice operator[](int i) const {
+            int c = 0;
+            badjson::Segment *s = in;
+            while (s != nullptr && c++ < i) {
+                c++;
+                s = s->nexts;
+            }
+            if (s != nullptr) {
+                return s->input;
+            }
+            return slice("");
+        }
+    };
+
+    class Command // the virtual base class. Aka the interface.
+    {
+        friend class HelpCommand;
+        friend struct streamReader;
+        friend struct WebServer;
+        friend struct MqttCommandClient;
+        friend class CmdTestUtil;
+
+    private:
+        Command *next;
+        badjson::Segment *parsed = nullptr;
+
+    public:
+        const char *name = "";
+        const char *description = "";
+        PermissionGroup permissions;
+        int argumentCount = 0;
+
+        Command();
+        virtual void execute(Args args, badjson::Segment *params, drain &out);
+
+    private:
+        virtual void init(){};
+        void parseTheName(); // since the name can be several words, chop it up
+        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out);
+    };
+
+    Command *getHead();
+
+    class CmdTestUtil {
+    public:
+        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out) {
+            Command::process(incomingCommandLine, params, out);
+        }
+    };
 }
 
 // Copyright 2022 Alan Tracey Wootton

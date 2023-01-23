@@ -1,0 +1,12 @@
+{
+  "additionalFiles": "",
+  "builtInLibrariesFolders": "/Applications/Arduino.app/Contents/Java/libraries",
+  "builtInToolsFolders": "/Applications/Arduino.app/Contents/Java/tools-builder,/Applications/Arduino.app/Contents/Java/hardware/tools/avr,/Users/awootton/Library/Arduino15/packages",
+  "compiler.optimization_flags": "",
+  "customBuildProperties": "build.path=/Users/awootton/Documents/workspace/arduino/mqtt5nano/examples/banner1/ArduinoOutput,build.warn_data_percentage=75,runtime.tools.xtensa-lx106-elf-gcc.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.0.4-gcc10.3-1757bed,runtime.tools.xtensa-lx106-elf-gcc-3.0.4-gcc10.3-1757bed.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.0.4-gcc10.3-1757bed,runtime.tools.mkspiffs.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/mkspiffs/3.0.4-gcc10.3-1757bed,runtime.tools.mkspiffs-3.0.4-gcc10.3-1757bed.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/mkspiffs/3.0.4-gcc10.3-1757bed,runtime.tools.python3.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1,runtime.tools.python3-3.7.2-post1.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1,runtime.tools.mklittlefs.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/mklittlefs/3.0.4-gcc10.3-1757bed,runtime.tools.mklittlefs-3.0.4-gcc10.3-1757bed.path=/Users/awootton/Library/Arduino15/packages/esp8266/tools/mklittlefs/3.0.4-gcc10.3-1757bed",
+  "fqbn": "esp8266:esp8266:nodemcuv2:xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,eesz=4M2M,led=2,ip=lm2f,dbg=Serial,lvl=None____,wipe=none,baud=460800",
+  "hardwareFolders": "/Applications/Arduino.app/Contents/Java/hardware,/Users/awootton/Library/Arduino15/packages,/Users/awootton/Arduino/hardware",
+  "otherLibrariesFolders": "/Users/awootton/Arduino/libraries",
+  "runtime.ide.version": "10819",
+  "sketchLocation": "/Users/awootton/Documents/workspace/arduino/mqtt5nano/examples/banner1/banner1.ino"
+}

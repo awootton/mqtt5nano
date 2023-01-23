@@ -11,7 +11,7 @@ Public domain.
 
 #include <stdint.h>
 
-namespace knotcrypto
+namespace nanocrypto
 {
     //#define UINTPTR_MAX 4294967295UL
     //#define SODIUM_SIZE_MAX UINTPTR_MAX

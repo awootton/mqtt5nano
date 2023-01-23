@@ -1,31 +1,61 @@
 
 #pragma once
 
+
 #if defined(ARDUINO)
+
+//extern class Stream *globalSerial;
+//#define DEBUGV(...) globalSerial->println("oops")
+
+// #define DEBUGV(fmt, ...) ::printf((PGM_P)PSTR(fmt), ##__VA_ARGS__)
+
+#if defined(ESP8266)
+#include <EEPROM.h>
+#elif defined(ESP32)
 #include <EEPROM.h>
 #else
- 
-// this is a MOCK.
-// It's unused and untested. TODO: (atw)
+#error "This ain't a ESP8266 or ESP32, buddy!" fixme
+#endif
 
-struct mockEEPROM
-{
+#else
+
+#include <iostream>
+#include <string>
+
+#include <stdlib.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+using namespace std;
+
+// this is a MOCK.
+// It's unused irl. TODO: (atw)
+
+struct mockEEPROM {
     char eeMockBuffer[4096];
 
-    void begin( int amt){
+    void begin(int amt) {
         // alloc the eeMockBuffer with this amount TODO:
+        if ( amt > 4096 ){
+            cout << "things have ee limitations";
+        }
+        for ( int i = 0; i < sizeof(eeMockBuffer); i ++ ){
+            eeMockBuffer[i] = -1;
+        }
     }
 
-    char read(int offset)
-    {
+    void end(){}
+
+    char read(int offset) {
         return eeMockBuffer[offset];
     }
 
-    void write(int offset, char c)
-    {
+    void write(int offset, char c) {
         eeMockBuffer[offset] = c;
     }
-    void commit(){
+    bool commit() {
+        return true;
     }
 };
 

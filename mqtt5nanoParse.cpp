@@ -2,35 +2,30 @@
 #include "mqtt5nanoParse.h"
 #include "nanobase64.h"
 
-namespace mqtt5nano
-{
+namespace mqtt5nano {
 
-    // FIXME: return ok, not fail.
-    bool mqttPacketPieces::parse(const slice body, const unsigned char _packetType, const int len)
-    {
-        bool fail = false;
+    // return ok, not fail.
+    bool mqttPacketPieces::parse(const slice body, const unsigned char _packetType, const int len) {
+        bool ok = true;
         reset();
 
         packetType = (_packetType >> 4);
         QoS = (_packetType >> 1) & 3;
 
-        if (packetType < CtrlConn || packetType > CtrlAuth)
-        {
-            fail = true;
-            return fail;
+        if (packetType < CtrlConn || packetType > CtrlAuth) {
+            ok = false;
+            return ok;
         }
 
         slice pos = body;
         // pos.printhex();
-        if (packetType == CtrlPublish)
-        {
+        if (packetType == CtrlPublish) {
             // ok. parse a pub.
             TopicName = pos.getBigFixedLenString();
             // TopicName.printstr();
             // pos.printhex();
-            if (QoS)
-            {
-               PacketID = pos.getBigFixLenInt();// this might be wrong endian FIXME:
+            if (QoS) {
+                PacketID = pos.getBigFixLenInt(); // this might be wrong endian FIXME:
             }
             int propLen = pos.getBigEndianVarLenInt();
 
@@ -40,64 +35,46 @@ namespace mqtt5nano
             pos.start = props.end;
 
             // props.printhex();
-            if (props.size())
-            {
+            if (props.size()) {
                 int userIndex = 0;
                 int maxUserIndex = userKeyValLen;
                 // parse the props
                 slice ptmp = props;
-                while (ptmp.empty() == false)
-                {
+                while (ptmp.empty() == false) {
                     int key = ptmp.readByte();
-                    if (key == propKeyRespTopic)
-                    {
+                    if (key == propKeyRespTopic) {
                         RespTopic = ptmp.getBigFixedLenString();
                         // RespTopic.printstr("resp");
-                    }
-                    else if (key == propKeyCorrelationData)
-                    {
+                    } else if (key == propKeyCorrelationData) {
                         CorrelationData = ptmp.getBigFixedLenString();
                         // RespTopic.printstr("corr");
-                    }
-                    else if (key == propKeyUserProps)
-                    {
+                    } else if (key == propKeyUserProps) {
                         slice k = ptmp.getBigFixedLenString();
                         // k.printstr();
                         slice v = ptmp.getBigFixedLenString();
                         // v.printstr();
-                        if (userIndex < maxUserIndex)
-                        {
+                        if (userIndex < maxUserIndex) {
                             UserKeyVal[userIndex] = k;
                             UserKeyVal[userIndex + 1] = v;
                             userIndex += 2;
                         }
-                    }
-                    else
-                    {
+                    } else {
                         // what happens now?
                         char code = getPropertyLenCode(key);
-                        if (code & 0x0F)
-                        {
-                            if (code == char(0xFF))
-                            {
-                                fail = true;
-                                return fail; // we're done and broken.
+                        if (code & 0x0F) {
+                            if (code == char(0xFF)) {
+                                ok = false;
+                                return ok; // we're done and broken.
                             }
-                            if (code == 0x0F)
-                            {
+                            if (code == 0x0F) {
                                 int dummy = ptmp.getBigEndianVarLenInt();
-                            }
-                            else
-                            { // pass 'code' bytes.
+                            } else { // pass 'code' bytes.
                                 ptmp.start += code;
                             }
-                        }
-                        else
-                        {
+                        } else {
                             code = code / 16;
                             // pass 'code' strings.
-                            for (int i = 0; i < code; i++)
-                            {
+                            for (int i = 0; i < code; i++) {
                                 slice aslice = ptmp.getBigFixedLenString();
                             }
                         }
@@ -108,20 +85,16 @@ namespace mqtt5nano
             Payload = pos;
             Payload.end = body.start + len;
             // and we're done.
-        }
-        else
-        {
+        } else {
             // worry about the body of the other packets later. TODO:
         }
-        return fail;
+        return ok;
     }
 
     // reset simply has to zero all the base pointers for the slices
     // and that makes them 'empty'.
-    void mqttPacketPieces::reset()
-    {
-        for (int i = 0; i < userKeyValLen; i++)
-        {
+    void mqttPacketPieces::reset() {
+        for (int i = 0; i < userKeyValLen; i++) {
             UserKeyVal[i].base = 0;
         }
         TopicName.base = 0;
@@ -132,9 +105,9 @@ namespace mqtt5nano
         QoS = 0;
     }
 
+    // returns ok
     bool mqttPacketPieces::outputConnect(sink assemblyBuffer, drain *destination,
-                                         slice clientID, slice user, slice pass)
-    {
+                                         slice clientID, slice user, slice pass) {
         // We're filling a buffer. We'll actually generate an array
         // of slices that are in the buffer that may have small gaps between them.
         // the problem is that the parts have variable length and we don't know
@@ -148,7 +121,7 @@ namespace mqtt5nano
 
         slice fixedHeader = assemblyBuffer;
         fixedHeader.start = assemblyBuffer.start;
-       
+
         assemblyBuffer.writeByte(char(packetType * 16) + (QoS * 2));
         fixedHeader.end = assemblyBuffer.start;
         //
@@ -185,39 +158,37 @@ namespace mqtt5nano
         // now the body length
         // at the tail of fixedHeader
         int bodylen = varHeader.size() + payload.size();
-        sink tmp = assemblyBuffer;      
+        sink tmp = assemblyBuffer;
         tmp.start = fixedHeader.end;
         tmp.end = tmp.start + 4;
         tmp.writeLittleEndianVarLenInt(bodylen);
         fixedHeader.end = tmp.start;
 
-        if (assemblyBuffer.full() == true)
-        {
+        if (assemblyBuffer.full() == true) {
             return true; // failed
         }
         // now, write out fixedHeader,varHeader, payload
-        bool fail = false;
-        fail |= destination->write(fixedHeader);
-        fail |= destination->write(varHeader);
-        fail |= destination->write(payload);
+        bool ok = true;
+        ok &= destination->write(fixedHeader);
+        ok &= destination->write(varHeader);
+        ok &= destination->write(payload);
 
-        return fail;
+        return ok;
     };
 
     // Output a mqtt5 Subscribe packet using values previously set.
     // outputBuffer is a buffer. The final result is copied to 'assemblyBuffer'.
     // we don't have to buffer payload.
     // NOTE: when generating Subscribe packets the topic must be in the TopicName.
+    // returns ok
 
-    bool mqttPacketPieces::outputPubOrSub(sink assemblyBuffer, drain *destination)
-    {
+    bool mqttPacketPieces::outputPubOrSub(sink assemblyBuffer, drain *destination) {
         // We're filling a buffer. We'll actually generate an array
         // of slices that are in the buffer that may have small gaps between them.
 
         // setby caller:  packetType = CtrlSubscribe;
 
-        if (packetType == CtrlSubscribe)
-        {
+        if (packetType == CtrlSubscribe) {
             Payload = TopicName;
             TopicName.base = 0;
         }
@@ -231,9 +202,8 @@ namespace mqtt5nano
         assemblyBuffer.start += 4; // leave some space
         //
         slice varHeader = assemblyBuffer;
-         varHeader.start = assemblyBuffer.start;
-        if (packetType == CtrlPublish)
-        {
+        varHeader.start = assemblyBuffer.start;
+        if (packetType == CtrlPublish) {
             assemblyBuffer.writeFixedLenStr(TopicName);
         }
         assemblyBuffer.writeByte(PacketID / 16); //  .
@@ -243,16 +213,13 @@ namespace mqtt5nano
         assemblyBuffer.start += 4; // leave some space
         //
         slice props = assemblyBuffer;
-         props.start = assemblyBuffer.start;
-        if (RespTopic.empty() == false)
-        {
+        props.start = assemblyBuffer.start;
+        if (RespTopic.empty() == false) {
             assemblyBuffer.writeByte(propKeyRespTopic);
             assemblyBuffer.writeFixedLenStr(RespTopic);
         }
-        for (int i = 0; i < userKeyValLen; i += 2)
-        {
-            if (UserKeyVal[i].empty() == false)
-            {
+        for (int i = 0; i < userKeyValLen; i += 2) {
+            if (UserKeyVal[i].empty() == false) {
                 assemblyBuffer.writeByte(propKeyUserProps);
                 assemblyBuffer.writeFixedLenStr(UserKeyVal[i]);
                 assemblyBuffer.writeFixedLenStr(UserKeyVal[i + 1]);
@@ -262,15 +229,14 @@ namespace mqtt5nano
 
         // don't buffer the payload.
         int payloadSize = Payload.size();
-        if (packetType == CtrlSubscribe)
-        {
+        if (packetType == CtrlSubscribe) {
             payloadSize += 2; // for it's length bytes
             payloadSize += 1; // because subscribe adds the qos
         }
         // put the lengths in.
         // put the props len at the tail of varHeader
         int propslen = props.size();
-        sink tmp= assemblyBuffer;
+        sink tmp = assemblyBuffer;
         tmp.start = varHeader.end;
         tmp.writeLittleEndianVarLenInt(propslen);
         varHeader.end = tmp.start;
@@ -278,43 +244,36 @@ namespace mqtt5nano
         // now the body length
         // at the tail of fixedHeader
         int bodylen = varHeader.size() + props.size() + payloadSize;
-     
+
         tmp.start = fixedHeader.end;
         tmp.writeLittleEndianVarLenInt(bodylen);
         fixedHeader.end = tmp.start;
 
-        if (assemblyBuffer.full() == true)
-        {
+        if (assemblyBuffer.full() == true) {
             return true; // failed
         }
 
         // now, write out fixedHeader,varHeader, props, payload
-        bool fail = false;
-        fail |= destination->write(fixedHeader);
-        fail |= destination->write(varHeader);
-        fail |= destination->write(props);
+        bool ok = true;
+        ok &= destination->write(fixedHeader);
+        ok &= destination->write(varHeader);
+        ok &= destination->write(props);
 
-        if (packetType == CtrlSubscribe)
-        {
-            fail |= destination->writeFixedLenStr(Payload);
-            fail |= destination->writeByte(QoS);
+        if (packetType == CtrlSubscribe) {
+            ok &= destination->writeFixedLenStr(Payload);
+            ok &= destination->writeByte(QoS);
+        } else { // packetType == CtrlPublish
+            ok &= destination->write(Payload);
         }
-        else
-        { // packetType == CtrlPublish
-            fail |= destination->write(Payload);
-        }
-        return fail;
+        return ok;
     };
 
     // return a value if key found else return a 'done' slice.
-    slice mqttPacketPieces::findKey(const char *key)
-    {
+    slice mqttPacketPieces::findKey(const char *key) {
         int size = userKeyValLen;
-        for (int i = 0; i < size; i += 2)
-        {
+        for (int i = 0; i < size; i += 2) {
             slice s = UserKeyVal[i];
-            if (s.equals(key))
-            {
+            if (s.equals(key)) {
                 return s;
             }
         }
@@ -327,8 +286,7 @@ namespace mqtt5nano
     // nibble or else how many strings to pass in the upper nibble.
     char PropKeyConsumes[43];
 
-    void init()
-    {
+    void init() {
         PropKeyConsumes[propKeyPayloadFormatIndicator] = 0x01; // byte, Packet: Will, Publish
         PropKeyConsumes[propKeyMessageExpiryInterval] = 0x04;  // Uint (4 bytes), Packet: Will, Publish
         PropKeyConsumes[propKeyContentType] = 0x10;            // utf-8, Packet: Will, Publish
@@ -357,42 +315,17 @@ namespace mqtt5nano
         PropKeyConsumes[propKeySharedSubAvail] = 0x01;         // byte, Packet: ConnAck
     }
 
-    unsigned char getPropertyLenCode(int i)
-    {
-        if (PropKeyConsumes[0] == 0)
-        {
+    unsigned char getPropertyLenCode(int i) {
+        if (PropKeyConsumes[0] == 0) {
             init();
         }
-        if (i <= sizeof(PropKeyConsumes))
-        {
+        if (i <= sizeof(PropKeyConsumes)) {
             return PropKeyConsumes[i];
         }
         return 0xFF;
     };
 
-    // slice mqttBuffer::XXXloadFromFount(fount &f, int amount)
-    // {
-    //     bool ok = true;
-    //     slice extent;
-    //     extent.start = 0;
-    //     extent.base = buffer;
-    //     extent.end = 0;
-    //     for (int i = 0; i < amount; i++)
-    //     {
-    //         extent.end = i;
-    //         if (f.empty() == true)
-    //         {
-    //             return extent;
-    //         }
-    //         unsigned char c = f.readByte();
-    //         buffer[extent.end] = c;
-    //         extent.end++;
-    //     };
-    //     return extent;
-    // };
-
-    slice mqttBuffer::loadHexString(const char *hexstr)
-    {
+    slice mqttBuffer::loadHexString(const char *hexstr) {
         slice extent;
         extent.start = 0;
         extent.base = buffer;
@@ -417,4 +350,3 @@ namespace mqtt5nano
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
