@@ -3,15 +3,17 @@
 #include "badjson.h"
 #include "eepromItem.h"
 #include "httpConverter.h"
+#include "layers.h"
 #include "mockWiFi.h"
 #include "mqtt5nanoParse.h"
+#include "nanobase64.h"
 #include "streamReader.h"
 #include "timedItem.h"
 #include "wiFiCommands.h"
 
 namespace mqtt5nano {
 
-    /** Open a tcp socket (or, better todo: a tls socket ).
+    /** Open a tcp socket (we're encrypting so tls is less necessary).
      * Send it a connect and then a subscribe.
      * Start collecting bytes in a buffer.
      * After we have a complete mqtt5 packet then try to extract a command out of
@@ -20,15 +22,19 @@ namespace mqtt5nano {
 
     extern EepromItem topicStash;
     extern EepromItem tokenStash;
+    extern EepromItem adminPublicKeyStash;
+    extern EepromItem devicePublicKeyStash;
     extern char topic[64];
     extern char passWord[512];
 
     struct MqttCommandClient {
 
-        const char *host = "knotfree.io"; // "192.168.86.23"; //"knotfree.net";
+        const char *host = "knotfree.io"; // fixme, add command to set this.
+        // const char *host = "192.168.86.31"; // fixme
         int port = 1883;
-        const char *clientId = "91sgEQGyqQSy8RBBB"; // fixme
-        const char *userName = "fG1EjiVTneOCHT5FU"; // fixme
+
+        const char *clientId = "91sgEQGyqQSy8RBBB"; // fixme, add command to set this.
+        const char *userName = "fG1EjiVTneOCHT5FU"; // fixme, add command to set this.
                                                     //  const char *passWord = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzE5MjQyNDMsImlzcyI6Il85c2giLCJqdGkiOiJMWGR3UkQ5TVBuVTlHcWJyVUVxYWFINmciLCJpbiI6MTUyLCJvdXQiOjE1Miwic3UiOjEwMCwiY28iOjQsInVybCI6Imtub3RmcmVlLm5ldCJ9.vNebYTwk2agVkKAXdrnSDhXW1MDrTuZRDxYWBMJp2F1iyfVGT9KHvP0H2wVA0UGu6Ft0cx8cbdbleFFMLvQdDA";
                                                     //  const char *topic = "woot-merida-banner2"; // "get-unix-time" or "backyard-temp-9gmf97inj5e";
         bool eeIsRead = false;
@@ -38,16 +44,15 @@ namespace mqtt5nano {
         bool sentConnect = false;
         bool sentSubscribe = false;
 
-        static const int buffSize = 4096; // should be enough.? it's huge
+        static const int buffSize = 4096; // should be enough.? it's huge.
         char sinkbuffer[buffSize];
         sink mqttsink; // we collect the incoming bytes here until it's a whole packet.
 
-        class Stream *haveStream;
-
+        // we re-subscribe every 18 minutes. This also adjusts the time.
         struct subTimer : TimedItem {
             MqttCommandClient *cli;
             subTimer() {
-                SetInterval(1000 * 60 * 20); // 20 min in ms
+                SetInterval(1000 * 60 * 18); // 18 min in ms
             }
             void execute() override {
                 if (cli->sentConnect) {
@@ -69,15 +74,14 @@ namespace mqtt5nano {
             pingTimer.cli = this;
         }
 
-        void reset() { // start all over again;
+        void reset() { // start all over again. for when we're really screwed.
             static const char PROGMEM tmp[] = "# resetPM";
-            //haveStream->println("# reset");
+            // globalSerial->println(tmp);
             clientconnected = false;
             client.stop();
             sentConnect = false;
             sentSubscribe = false;
             backoff = 10000;
-            haveStream->println(tmp);
         }
 
         bool sendConnect() {
@@ -92,7 +96,7 @@ namespace mqtt5nano {
         }
 
         bool sendSubscribe(slice topic) {
-            char buffer[128];
+            char buffer[128]; // limit of topic name is 128 bytes.
             sink assemblyBufferSink(buffer, 127);
 
             mqttPacketPieces subscribe;
@@ -109,25 +113,25 @@ namespace mqtt5nano {
         int backoff = 0;
 
         void loop(long now, class Stream &serial) {
-            haveStream = &serial;
+            // haveStream = &serial;
             long delta = now - lastNow;
             lastNow = now;
             if (backoff > 0) {
                 backoff -= delta;
                 return;
             }
-            bigloop(now, serial); // todo break bigloop down more into smaller pieces.
+            bigloop(now); // todo break bigloop down more into smaller pieces.
         }
 
-        void bigloop(long now, class Stream &serial) {
+        void bigloop(long now) {
 
-            if (!eeIsRead) {
+            if (!eeIsRead) { // could we just not do this?
                 SinkDrain tmp(topic, sizeof(topic));
                 topicStash.read(tmp);
                 SinkDrain tmp2(passWord, sizeof(passWord));
                 tokenStash.read(tmp2);
 
-                serial.println("# read topic, token");
+                globalSerial->println("# read topic, token");
                 eeIsRead = true;
             }
             // our long name
@@ -143,14 +147,21 @@ namespace mqtt5nano {
                 // open a tcp socket
                 if (!clientconnected) {
 
-                    serial.println("# client.connect");
+                    globalSerial->print("# client.connect ");
+                    globalSerial->print(host);
+                    globalSerial->print(" ");
+                    globalSerial->println(port);
 
-                    bool ok = client.connect(host, port);
+                    // IPAddress ip;
+                    // ip.fromString(host);// for when host is dotted quad
+
+                    bool ok = client.connect(host, port, 10000); // timeout in ms
+                    // bool ok = client.connect(ip, port, 10000); // timeout in ms
                     if (ok) {
-                        serial.println("# mqtt.connect ok ");
+                        globalSerial->println("# mqtt.connect ok ");
                         clientconnected = true;
                     } else {
-                        serial.println("# mqtt.connect FAIL ");
+                        globalSerial->println("# mqtt.connect FAIL ");
                         backoff = 10000;
                     }
 
@@ -158,14 +169,14 @@ namespace mqtt5nano {
                 }
                 if (!sentConnect) {
 
-                    serial.println("# send mqtt Connect");
+                    globalSerial->println("# send mqtt Connect");
 
                     bool ok = sendConnect();
                     if (ok) {
                         sentConnect = true;
-                        serial.println("# sent mqtt connect ok");
+                        globalSerial->println("# sent mqtt connect ok");
                     } else {
-                        serial.println("# sent mqtt connect FAIL");
+                        globalSerial->println("# sent mqtt connect FAIL");
                         backoff = 1000;
                     }
                     // do we have to wait for the conack that I don't really care about?
@@ -176,64 +187,60 @@ namespace mqtt5nano {
                     bool ok = sendSubscribe(topic);
                     if (ok) {
                         sentSubscribe = true;
-                        serial.println("# sent subscribe ok");
+                        globalSerial->println("# sent subscribe ok");
                     } else {
-                        serial.println("# sent subscribe FAIL");
+                        globalSerial->println("# sent subscribe FAIL");
                         backoff = 1000;
                     }
                     // do we have to wait for the conack that I don't really care about.
                     return;
                 }
                 // if we're here we're supposed to be good.
-                // serial.println("# check is connected?");
+                // globalSerial->println("# check is connected?");
                 if (!client.connected()) {
-                    serial.println("# client not connected");
+                    globalSerial->println("# client not connected");
                     reset(); // what we do when we're not good.
                     backoff = 10000;
                     return;
                 }
-                // serial.println("# have connected");
+                // globalSerial->println("# have connected");
                 // while (client.available())
                 if (client.available()) {
+
+                top:
                     char c = client.read();
                     mqttsink.writeByte(c);
                     if (mqttsink.remaining() < 2) {
-
-                        serial.println("# mqttsink overflow");
-
+                        globalSerial->println("# mqttsink overflow");
                         reset();
                         return;
                     }
-
-                    // char cc[1];
-                    // char inhex[3];
-                    // cc[0] = c;
-                    // hex::encode((const unsigned char *)cc, 1, inhex, 2);
-                    // inhex[2] = 0;
-                    // serial.print("got byte ");
-                    // serial.println((char *)inhex);
-
-                    // do we have a whole mqtt packet?
-
                     slice position(mqttsink);
-
                     if (position.size() < 2) {
                         return;
                     }
+                    int posStart = position.start;
                     unsigned char rawpacketType = position.readByte();
                     const int len = position.getLittleEndianVarLenInt();
                     if (len == -1) { // not enough bytes fail
                         return;
                     }
-                    if (position.size() < len) { // there'serial not enough bytes in availableNow for this packet
-                        return;
+                    if (position.size() < len) { // there's not enough bytes for this packet
+                        if (!client.available()) {
+                            return; // try again next time.
+                        }
+                        goto top;
                     }
-                    serial.println("# have mqtt packet");
-                    serial.println(len);
-                    // serial.print("# before segmentsAllocated ");
-                    // serial.println(badjson::segmentsAllocated);
-                    // serial.print("# before freeHeap ");
-                    // serial.println(ESP.getFreeHeap());
+
+                    { // dump the packet in hex
+                        globalSerial->println("# have mqtt packet");
+                        globalSerial->println(len);
+                        char *hexDumpBuffer = (char *)malloc(len * 2 + 10);
+                        int hexlen = hex::encode(position.base + posStart, position.end - posStart, hexDumpBuffer, len * 2 + 10);
+                        hexDumpBuffer[hexlen] = 0;
+                        globalSerial->println(hexDumpBuffer);
+                        free(hexDumpBuffer);
+                    }
 
                     {
                         int packetType = (rawpacketType >> 4);
@@ -242,12 +249,13 @@ namespace mqtt5nano {
                         mqttPacketPieces parser;
                         bool ok = parser.parse(position, rawpacketType, len);
                         if (!ok) { // I don't know that we can recover from this.
-                            serial.println("# FAIL in parse ");
+                            globalSerial->println("# FAIL in parse ");
                             char hbuf[128];
-                            serial.println(packetType);
-                            serial.println(slice(mqttsink).gethexstr(hbuf, 128));
+                            globalSerial->println(packetType);
+                            globalSerial->println(slice(mqttsink).gethexstr(hbuf, 128));
                             // bail out
-                            reset();
+                            reset(); // we need a whole new connection.
+                            backoff = 100;
                             return;
                         }
                         // we're good
@@ -255,8 +263,10 @@ namespace mqtt5nano {
                             slice receivedTopic = parser.TopicName;
                             slice returnAddress = parser.RespTopic;
                             slice payload = parser.Payload;
-                            ParsedHttp httpprops;
+                            CommandPipeline pipeline;
+                            pipeline.isMqtt = true;
                             // user props etc.
+                            // let's transfer the user props to the http props.
                             for (int i = 0; i < mqttPacketPieces::userKeyValLen; i++) {
                                 slice kv = parser.UserKeyVal[i];
                                 if (kv.empty()) {
@@ -264,9 +274,9 @@ namespace mqtt5nano {
                                 }
                                 badjson::Segment *seg;
                                 if (kv.startsWith("=")) {
-                                    seg = new badjson::Base64Bytes();
+                                    seg = new badjson::Base64Bytes(); // does this ever happen?
                                 } else if (kv.startsWith("$")) {
-                                    seg = new badjson::HexBytes();
+                                    seg = new badjson::HexBytes(); // does this ever happen?
                                 } else {
                                     badjson::RuneArray *ra = new badjson::RuneArray();
                                     ra->theQuote = 0; // it might just be straight bytes and not runes.
@@ -274,59 +284,69 @@ namespace mqtt5nano {
                                     seg = ra;
                                 }
                                 seg->input = kv;
-                                httpprops.linkToTail(*seg);
+                                pipeline.linkToTail(*seg);
                             }
-                            httpprops.linkFrontToParams();
+                            pipeline.linkFrontToParams();
                             slice message = parser.Payload;
 
-                            // serial.println("publish packet:");
-                            char tmp[256];
-                            // serial.println(receivedTopic.getCstr(tmp, 256));
-                            // serial.println(returnAddress.getCstr(tmp, 256));
+                            { // show the packet payload
+                                // globalSerial->println("publish packet:");
+                                char * tmp = new char[payload.size()+32];
+                                // globalSerial->println(receivedTopic.getCstr(tmp, sizeof(tmp)));
+                                // globalSerial->println(returnAddress.getCstr(tmp, sizeof(tmp)));
 
-                            serial.println(payload.getCstr(tmp, 256)); // show the command
-                            serial.print(".");
-
-                            // we need to check if the message is a GET
-                            bool wasHttp = httpprops.convert(payload);
-                            if (wasHttp) {
-                                // nothing
-                            } else {
-                                // chop up the payload as text
-                                badjson::ResultsTriplette chopped = badjson::Chop(payload.base + payload.start, payload.size());
-                                if (chopped.error != nullptr) {
-                                    // return a message ??
-                                    serial.println("ERROR payload chop");
-                                    reset();
-                                    return;
-                                }
-                                httpprops.linkToTail(*chopped.segment); // httpprops will free the segments now
-                                httpprops.linkFrontToCommand();
+                                globalSerial->println("show the payload");
+                                globalSerial->println(payload.getCstr(tmp, sizeof(tmp))); // show the payload
+                                delete []tmp;
                             }
-                            // feed it to the commands.
-                            char *cmdreplybuffer = new char[2048]; // FIXME: kinda big
+                            // now we should just send it to the pipeline
+                            // which will.
 
-                            // StreamDrain dr(serial);
-                            // badjson::ToString(*httpprops.command, dr);
-                            // if (httpprops.params) {
-                            //     badjson::ToString(*httpprops.params, dr);
+                            // char *cmdreplybuffer = new char[2048]; // FIXME: kinda big
+
+                            // SinkDrain response(cmdreplybuffer, 2048);
+
+                            StreamDrain socket(client);
+
+                           // SinkDrain &response = 
+                            pipeline.handlePayload(payload,socket);
+
+                            // bool wasHttp = httpprops.convert(payload);
+                            // if (wasHttp) {
+                            //     // fixme:
+                            //     httpprops.isHttP = true;
+                            //     httpprops.haveSomething(payload)
+
+                            // } else
+                            // {
+                            //     // chop up the payload as text
+                            //     badjson::ResultsTriplette chopped = badjson::Chop(payload.base + payload.start, payload.size());
+                            //     if (chopped.error != nullptr) {
+                            //         // return a message ??
+                            //         globalSerial->println("ERROR payload chop");
+                            //         reset();
+                            //         return;
+                            //     }
+                            //     httpprops.linkToTail(*chopped.segment); // httpprops will free the segments now
+                            //     httpprops.linkFrontToCommand();
+                            // }
+                            // feed it to the commands.
+                            // char *cmdreplybuffer = new char[2048]; // FIXME: kinda big
+
+                            // SinkDrain response(cmdreplybuffer, 2048);
+                            // Command::process(httpprops.command, httpprops.command, response);
+                            // // now, for the response into a publish
+                            // // wrap in a http reply if necessary.
+                            // if (wasHttp) {
+                            //     // fixme
+                            //     // call http services to wrap output in http reply
+                            //     // SinkDrain response = httpServide::wrap(response)
+                            //     // response = response2;
                             // }
 
-                            SinkDrain response(cmdreplybuffer, 2048);
-                            Command::process(httpprops.command, httpprops.command, response);
-                            // now, for the response into a publish
-                            // wrap in a http reply if necessary.
-                            if (wasHttp) {
-                                // fixme
-                                // call http services to wrap output in http reply
-                                // SinkDrain response = httpServide::wrap(response)
-                                // response = response2;
-                            }
-
-                            serial.print("reply is ");
-                            serial.println(response.buffer.base);
-
-                            // it'serial still a SinkDrain called response
+                            // globalSerial->print("reply is ");
+                            // response.buffer.base[response.buffer.start] = 0;
+                            // globalSerial->println(response.buffer.base);
 
                             mqttPacketPieces pubgen;
 
@@ -337,88 +357,87 @@ namespace mqtt5nano {
                             pubgen.PacketID = 3;
                             pubgen.RespTopic = parser.TopicName;
 
-                            pubgen.Payload = sink(response.buffer);
+       // fixme                     pubgen.Payload = slice(response.buffer.base, 0, response.buffer.start);
 
-                            for (int i = 0; i < parser.userKeyValLen; i++) {
-                                pubgen.UserKeyVal[i] = parser.UserKeyVal[i];
+                            // copy the user props, from the pipeline.
+                            badjson::Segment *pP = pipeline.params;
+                            while (pP != nullptr) {
+                                pP = pP->next;
                             }
+                            // for (int i = 0; i < parser.userKeyValLen; i++) {
+                            //     pubgen.UserKeyVal[i] = parser.UserKeyVal[i];
+                            // }
 
-                            char assemblybuffer[2048]; // ?? how much 4096? new //FIXME: too big for stack
-                            sink assemblyArea(assemblybuffer, 2048);
+                            // move this to the layers gadget?
+                            char assemblybuffer[1024]; // ?? how much 4096? new //FIXME: too big for stack
+                            sink assemblyArea(assemblybuffer, 1024);
 
-                            StreamDrain socket(client);
+                          //  StreamDrain socket(client);
 
                             bool ok = pubgen.outputPubOrSub(assemblyArea, &socket);
                             if (!ok) {
-                                serial.println("ERROR pubgen not ok");
+                                globalSerial->println("ERROR pubgen not ok");
                                 reset();
                             }
                             mqttsink.reset();
-                            delete[] cmdreplybuffer;
-
-                            // serial.print("# after segmentsAllocated ");
-                            // serial.println(badjson::segmentsAllocated);
-                            // serial.print("# after freeHeap ");
-                            // serial.println(ESP.getFreeHeap());
+                            // delete[] cmdreplybuffer;
 
                         } else if (packetType == CtrlConnAck) {
-                            // static const char PROGMEM tmp[] = "# CtrlConnAck";
-                            serial.println("# CtrlConnAck");
+                            globalSerial->println("# CtrlConnAck");
                             mqttsink.reset();
                         } else if (packetType == CtrlSubAck) {
-                            serial.println("# CtrlSubAck");
+                            globalSerial->println("# CtrlSubAck");
+                            // we can get the time from the CtrlSubAck
+                            slice timeStr = parser.userKeyValueGet("unix-time");
+                            // char tmpBuffer[64];
+                            // timeStr.getCstr(tmpBuffer, 64);
+                            // globalSerial->print("# timeStr ");
+                            // globalSerial->println(tmpBuffer);
+                            long t = timeStr.toLong();
+                            // globalSerial->print("# time long ");
+                            // globalSerial->println(t);
+                            if (t > 0) {
+                                millisUnixAdjust = (long long)t * 1000 - latestNowMillis;
+                            }
+                            // globalSerial->print("# unix time ");
+                            // globalSerial->println(getUnixTime());
+                            // globalSerial->print(sizeof(long long)); // long is just 4, need 8 for this
+                            // globalSerial->print(sizeof(int));       // long is just 4
                             mqttsink.reset();
                         } else {
-                            serial.print("# mqtt unhandled type ");
-                            serial.println(packetType);
+                            globalSerial->print("# mqtt unhandled type ");
+                            globalSerial->println(packetType);
                             // reset the buffer to pass the command.
                             mqttsink.reset();
                         }
                     }
-                    // serial.print("# after segmentsAllocated ");
-                    // serial.println(badjson::segmentsAllocated);
-                    // serial.print("# after freeHeap ");
-                    // serial.println(ESP.getFreeHeap());
                 }
             } else { // else not wifi connected
             }
         }
 
-        struct getAdminHint : Command {
-            void init() override {
-                name = "get admin hint";
-                description = "first bytes from any admin keys we accept";
-                argumentCount = 1;
-            }
-            void execute(Args args, badjson::Segment *params, drain &out) override {
-
-                out.write("aaa bbb ccc");
-            }
-        } getAdminHint;
-
-        // struct getAbout : Command {
+        // struct getAdminHint : Command {
         //     void init() override {
-        //         name = "about";
-        //         description = "it's all about me";
+        //         name = "get admin hint";
+        //         description = "first bytes from any admin keys we accept.🔓";
         //         argumentCount = 1;
         //     }
         //     void execute(Args args, badjson::Segment *params, drain &out) override {
 
-        //         out.write("Mqtt5nano v.0.1.0");
+        //         out.write("aaa bbb ccc");
         //     }
-        // } getAbout;
+        // } getAdminHint;
 
-        struct getPubk : Command {
-            void init() override {
-                name = "get pubk";
-                description = "public key of this thing";
-                argumentCount = 1;
-            }
-            void execute(Args args, badjson::Segment *params, drain &out) override {
+        // struct getPubk : Command {
+        //     void init() override {
+        //         name = "get pubk";
+        //         description = "public key of this thing.🔓";
+        //         argumentCount = 1;
+        //     }
+        //     void execute(Args args, badjson::Segment *params, drain &out) override {
 
-                out.write("-none-");
-            }
-        } getPubk;
+        //     }
+        // } getPubk;
 
         struct topicGet : Command {
             void init() override {
@@ -464,7 +483,7 @@ namespace mqtt5nano {
                 if (passWord[0] != 0) {
                     out.write("********");
                 }
-                tokenStash.read(out);
+                // tokenStash.read(out);
             }
         } tokenGet;
 

@@ -3,6 +3,7 @@
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 #elif defined(ESP32)
 #include <WiFi.h>
 #else
@@ -81,7 +82,7 @@ struct mockWiFi {
 
     // eg.
     //   WiFi.mode(WIFI_STA);
-    //   WiFi.begin("woot2", "fly1440nap");
+    //   WiFi.begin("woot2", "kkk");
     //   while (WiFi.status() != WL_CONNECTED)
     //   WiFi.localIP()
 
@@ -364,7 +365,7 @@ struct WiFiClient : mockWiFiClientBuffers {
     WiFiClient() {
     }
 
-    int connect(const char *host, uint16_t port) {
+    int connect(const char *host, uint16_t port, int timeout) {
         return xconnect(host, port);
     }
     bool operator==(const WiFiClient &rhs) {

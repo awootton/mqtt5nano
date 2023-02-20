@@ -6,12 +6,17 @@
 #include "crypto/tinymt.h"
 
 #include "nanobase64.h"
+#include "nanoCommon.h"
+
 
 namespace mqtt5nano {
 
-    long latestNowMillis = 0;
+    long long latestNowMillis = 0;
+    long long millisUnixAdjust = 0;
 
-    class Stream *globalSerial = nullptr;
+    int getUnixTime(){
+        return (latestNowMillis + millisUnixAdjust) / 1000;
+    }
 
     tinymt::tinymt32 rng;
 

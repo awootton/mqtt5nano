@@ -1,15 +1,137 @@
 
-
 #pragma once
 
 #include "commandLine.h"
 #include "eepromItem.h"
 
 #include "nanoCrypto.h"
+#include "nanobase64.h"
 
 namespace mqtt5nano {
 
+    extern EepromItem adminPublicKeyStash;
+    extern EepromItem devicePublicKeyStash;
+    extern EepromItem devicePrivateKeyStash;
+
+    struct adminKeyGet : Command {
+        void init() override {
+            name = "get admin hint";
+            description = "first 8 letters of admin keys accepted.🔓";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            int prev = adminPublicKeyStash.size;
+            adminPublicKeyStash.size = 8;
+            adminPublicKeyStash.read(out);
+            adminPublicKeyStash.size = prev;
+        }
+    };
+
+    struct pubKeyGet : Command {
+        void init() override {
+            name = "get pubk";
+            description = "device public key.🔓";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            devicePublicKeyStash.read(out);
+        }
+    };
+
+    void setAdminPassword(slice arg);
+
+    struct adminKeySet : Command {
+        void init() override {
+            name = "set admin password";
+            description = "the passphrase for admin access.";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+
+            if (args.source != CommandSource::SerialPort) {
+                out.write("ERROR admin key can only be set from a Serial Monitor");
+                return;
+            }
+            if (args[0].empty()) {
+                out.write("ERROR expected a value");
+                return;
+            }
+
+            setAdminPassword(args[0]);
+
+            out.write("OK");
+        }
+    };
+
+
     
+    //  {
+    //     char adminPublicKey[32];
+    //     char adminPrivateKey[32];
+    //     char tmp[1024];
+    //     char *passphrase = arg.getCstr(tmp, 1024);
+
+    //     nanocrypto::getBoxKeyPairFromPassphrase(passphrase, adminPublicKey, adminPrivateKey);
+    //     int len = base64::encode(adminPublicKey, 32, tmp, 1014);
+    //     adminPublicKeyStash.write(slice(tmp, 0, len));
+    // }
+
+    void setDevicePassword(slice arg);
+
+    struct deviceKeySet : Command {
+        void init() override {
+            name = "set device password";
+            description = "the passphrase for this device.";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+
+            if (args.source != CommandSource::SerialPort) {
+                out.write("ERROR device keys can only be set from a Serial Monitor");
+                return;
+            }
+            if (args[0].empty()) {
+                out.write("ERROR expected a value");
+                return;
+            }
+            setDevicePassword(args[0]);
+            out.write("OK");
+        }
+    };
+
+
+    //  {
+    //     char thingPublicKey[32];
+    //     char thingPrivateKey[32];
+    //     char tmp[1024];
+    //     char *passphrase = arg.getCstr(tmp, 1024);
+
+    //     nanocrypto::getBoxKeyPairFromPassphrase(passphrase, thingPublicKey, thingPrivateKey);
+
+    //     int len = base64::encode(thingPublicKey, 32, tmp, 1024);
+    //     devicePublicKeyStash.write(slice(tmp, 0, len));
+
+    //     len = base64::encode(thingPrivateKey, 32, tmp, 1024);
+    //     devicePrivateKeyStash.write(slice(tmp, 0, len));
+    // }
+
+    extern EepromItem hostStash;
+    extern bool did_mDns;
+
+    struct hostSet : Command {
+        void init() override {
+            name = "set short name";
+            description = "set short name aka hostname. This will be the 'local.' name.";
+            argumentCount = 1;
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            if (args[0].empty()) {
+                out.write("ERROR expected a value");
+                return;
+            }
+            hostStash.write(args[0]);
+            out.write("ok: ");
+            hostStash.read(out);
+            did_mDns = false; // retry now
+        }
+    };
+
     struct getUptime : Command {
 
         int starttime = 0;
@@ -37,7 +159,7 @@ namespace mqtt5nano {
     struct getServed : Command {
         void init() override {
             name = "served";
-            description = "count of requests served since reboot";
+            description = "count of requests served since reboot.";
         }
         void execute(Args args, badjson::Segment *params, drain &out) override {
             out.writeInt(commandsServed);
@@ -52,6 +174,46 @@ namespace mqtt5nano {
         void execute(Args args, badjson::Segment *params, drain &out) override {
             out.write("v0.1.0");
         }
+    };
+
+    struct getUnixTimeCmd : Command {
+        void init() override {
+            name = "get time";
+            description = "seconds since 1970🔓 See epochconverter.com";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            out.writeInt(getUnixTime());
+        }
+    };
+
+    extern EepromItem topicStash;
+    extern EepromItem tokenStash;
+
+    struct mqttStatus : Command {
+
+        void init() override {
+            name = "status";
+            description = "mqtt status";
+        }
+        void execute(Args args, badjson::Segment *params, drain &out) override {
+            out.write("admin hint:");
+            int prev = adminPublicKeyStash.size;
+            adminPublicKeyStash.size = 8;
+            adminPublicKeyStash.read(out);
+            adminPublicKeyStash.size = prev;
+
+            out.write(" admin public key:");
+            adminPublicKeyStash.read(out);
+
+            out.write(" public key:");
+            devicePublicKeyStash.read(out);
+
+            out.write(" long name:");
+            topicStash.read(out);
+
+            out.write(" token:");
+            tokenStash.read(out);
+        };
     };
 
 }

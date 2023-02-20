@@ -65,13 +65,13 @@ namespace mqtt5nano {
             }
             return slice();
         }
-        virtual void execute(slice cmd) // override me ?
+        virtual void execute(slice cmd) // override me ? FIXME: use the layers pattern
         {
             // sP->print("received command: ");
             // sP->println(cmd.base);
             badjson::ResultsTriplette chopped = badjson::Chop(cmd.base + cmd.start, cmd.size());
             if (chopped.error == nullptr) { // process command line
-                Command::process(chopped.segment, nullptr, adrain);
+                Command::process(chopped.segment, nullptr, adrain, CommandSource::SerialPort);
             } else {
                 adrain.write(chopped.error);
                 adrain.write("\n");

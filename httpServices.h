@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nanoCommon.h"
+
 #include "wiFiCommands.h"
 
 #include "mockWiFi.h"
@@ -7,7 +9,10 @@
 #include "httpConverter.h"
 #include "streamReader.h"
 
+#include "layers.h"
 #include "streamReader.h"
+
+// this is for local mode.
 
 namespace mqtt5nano {
 
@@ -55,7 +60,6 @@ namespace mqtt5nano {
                     clientconnected = true;
                 }
                 int charMax = 64;
-                // WiFiClient &client = clients[i];
                 while (charMax && client.available() > 0) {
                     charMax--;
                     if ((websink.start % 16) == 0) {
@@ -65,95 +69,91 @@ namespace mqtt5nano {
                     websink.writeByte(c);
                     if (ParsedHttp::isWholeRequest(websink)) {
                         // got one !!
-                        // s.println("# got http ");
-                       
+                        {
+                            s.println("# got http ");
+                            websink.base[websink.start] = 0; // null terminate it
+                            s.println(websink.base);
+                        }
                         // s.println(0);
                         // I'm gonna need a buffer
-                        char *cmdreplybuffer = new char[2048];
-                        SinkDrain response(cmdreplybuffer, 2048);
+                        // char *cmdreplybuffer = new char[2048];
+                        // SinkDrain response(cmdreplybuffer, 2048);
 
-                        s.print("got ");
-                        s.println(websink.getWritten().getCstr(cmdreplybuffer,2048));
+                        CommandPipeline pipeline;
+                        pipeline.fromHttp = true;
 
-                        ParsedHttp parsed;
-                        bool ok = parsed.convert(websink);
-                        if (ok) {
-                            // s.println("# parsed ok");
-                            // StreamDrain dr(s);
-                            // parsed.command->GetQuoted(dr); // print the command
-                            // s.println();
-                        } else {
-                            s.println("# parsed FAIL");
-                            s.println(websink.getWritten().getCstr(cmdreplybuffer,2048));
-                        }
-                        // pass to execute
-                        Command::process(parsed.command, parsed.params, response);
 
-                        int responseLen = response.buffer.start;
-                        s.print("content len");
-                        s.println(responseLen);
+                        StreamDrain dest(client);
+                      
+                        pipeline.handlePayload(websink.getWritten(), dest);
 
-                        bool isPng = parsed.command->input.equals("favicon.ico");
+                        // ParsedHttp httpprops;
+                        // bool ok = httpprops.convert(websink);
+                        // if (ok) {
+                        //     // s.println("# parsed ok");
+                        //     // StreamDrain dr(s);
+                        //     // parsed.command->GetQuoted(dr); // print the command
+                        //     // s.println();
+                        // } else {
+                        //     s.println("# parsed FAIL");
+                        //     s.println(websink.getWritten().getCstr(cmdreplybuffer,2048));
+                        // }
+                        // // pass to execute
+                        // Command::process(httpprops.command, httpprops.params, response);
 
-                        // call command processing instead of this
-                        // response.write("this would be the reply");
+                        // int responseLen = response.buffer.start;
+                        // s.print("content len ");
+                        // s.println(responseLen);
 
-                        if (!isPng) {
-                            // response.writeByte((char)0);
-                        }
+                        // bool isPng = httpprops.command->input.equals("favicon.ico");
+
+                        // if (!isPng) {
+                        //     // response.writeByte((char)0);
+                        // }
                         // s.print("content");
                         // s.println(response.buffer.base);
 
                         // TODO: out-line this
-                        if (true) 
-                        {
-                            client.print(F("HTTP/1.1 200 OK\r\n"));
-                            client.print(F("Content-Length: "));
-                            client.print(responseLen);
-                            client.print(F("\r\n"));
-                            // we have to return the params as headers
-                            badjson::Segment *pP = parsed.params;
-                            char tmp[64];
-                            while (pP != nullptr) {
-                                client.write(pP->input.getCstr(tmp, sizeof(tmp)));
-                                client.write(": ");
-                                pP = pP->nexts;
-                                if (pP != nullptr) {
-                                    client.write(pP->input.getCstr(tmp, sizeof(tmp)));
-                                    pP = pP->nexts;
-                                }
-                                client.print(F("\r\n"));
-                            }
-                            if (isPng) { // hack alert
-                                client.print(F("Content-Type: image/png\r\n"));
-                            } else {
-                                client.print(F("Content-Type: text/plain\r\n"));
-                            }
-                            client.print(F("Access-Control-Allow-Origin: https://knotfree.net, http://knotfree.io\r\n"));
-                            client.print(F("Access-control-expose-headers: *\r\n"));
-                            client.print(F("Access-Control-Allow-Private-Network: true\r\n"));
-                            client.print(F("Access-Control-Request-Private-Network: true\r\n"));
-                            client.print(F("Access-Control-Allow-Methods: GET, PUT, OPTIONS\r\n"));
-                            client.print(F("Content-Security-Policy: treat-as-public-address\r\n"));
-                            client.print(F("Access-Control-Max-Age: 10\r\n")); // 300 ? 86400 ?
-                               
-                            client.print(F("Connection: Closed\r\n"));
-
-                            client.print(F("\r\n"));
-                        }
-
-                        // client.setNoDelay(true);
+                        // if (true)
+                        // {
+                        //     client.print(F("HTTP/1.1 200 OK\r\n"));
+                        //     client.print(F("Content-Length: "));
+                        //     client.print(responseLen);
+                        //     client.print(F("\r\n"));
+                        //     // we have to return the params as headers
+                        //     badjson::Segment *pP = httpprops.params;
+                        //     char tmp[64];
+                        //     while (pP != nullptr) {
+                        //         client.write(pP->input.getCstr(tmp, sizeof(tmp)));
+                        //         client.write(": ");
+                        //         pP = pP->nexts;
+                        //         if (pP != nullptr) {
+                        //             client.write(pP->input.getCstr(tmp, sizeof(tmp)));
+                        //             pP = pP->nexts;
+                        //         }
+                        //         client.print(F("\r\n"));
+                        //     }
+                        //     if (isPng) { // hack alert
+                        //         client.print(F("Content-Type: image/png\r\n"));
+                        //     } else {
+                        //         client.print(F("Content-Type: text/plain\r\n"));
+                        //     }
+                        //     client.print(F("Access-Control-Allow-Origin: *\r\n"));
+                        //     client.print(F("Access-control-expose-headers: nonc\r\n"));
+                        //     client.print(F("Connection: Closed\r\n"));
+                        //     client.print(F("\r\n"));
+                        // }
 
                         // wtf client.write((const char*)cmdreplybuffer,(size_t)responseLen);
-                        for (int i = 0; i < responseLen; i++) {
-                            client.write((uint8_t)cmdreplybuffer[i]);
-                        }
+                        // for (int i = 0; i < responseLen; i++) {
+                        //     client.write( response.buffer.base[i] );
+                        // }
 
                         client.flush();
                         client.stop();
-                        delete[] cmdreplybuffer;
-                        // delete parsed.command;
-                        // delete parsed.params;
+                        // delete[] cmdreplybuffer;
+                        // delete parsed.command; happens auto at }
+                        // delete parsed.params; happens auto at }
 
                         websink.start = 0; // reset
                     }

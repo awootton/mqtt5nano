@@ -5,13 +5,15 @@
 
 #pragma once
 
-#if defined(ARDUINO)
-    #if defined(ESP32)
-    PROGMEM
-    #endif
-#else
-#define PROGMEM
-#endif
+#include "nanoCommon.h"
+
+// #if defined(ARDUINO)
+//     #if defined(ESP32)
+//     #define PROGMEM
+//     #endif
+// #else
+// #define PROGMEM
+// #endif
 
 
 #include <stdint.h>

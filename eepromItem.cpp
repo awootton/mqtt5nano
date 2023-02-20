@@ -1,6 +1,8 @@
 
+
 #include "eepromItem.h"
 #include "commandLine.h"
+#include "nanoCommon.h"
 
 namespace mqtt5nano {
     EepromItem *eehead;
@@ -27,13 +29,13 @@ namespace mqtt5nano {
         globalSerial->println("# Ee Init");
         EepromItem *eP = eehead;
         while (eP != nullptr) {
-            // serial.print("ee checking ");
-            // serial.print(eP->description);
-            // serial.print(" ");
-            // serial.print(eP->offset);
-            // serial.print(" ");
-            // serial.print(eP->size);
-            // serial.print("\n");
+            // s.print("ee checking ");
+            // s.print(eP->description);
+            // s.print(" ");
+            // s.print(eP->offset);
+            // s.print(" ");
+            // s.print(eP->size);
+            // s.print("\n");
             eP->checkStarted();
             eP = eP->next;
         }
@@ -41,7 +43,7 @@ namespace mqtt5nano {
     // erase command
     struct eraseAll : Command {
         void init() override {
-            name = "erase eeprom";
+            name = "settings erase";
             description = "erase all the settings with code KILLMENOW";
             this->argumentCount = 1;
 

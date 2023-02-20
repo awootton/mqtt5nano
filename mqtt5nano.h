@@ -16,6 +16,7 @@ extern void delay(int);
 
 #include "nanoCommon.h"
 #include "mockStream.h" // this does nothing on Arduino. A stub.
+
 // this is the mqtt5 parser and generator.
 #include "mqtt5nanoParse.h"
 #include "timedItem.h"
@@ -27,15 +28,14 @@ extern void delay(int);
 #include "mqttCommands.h"
 #include "nanoCrypto.h"
 #include "nanobase64.h"
-#include "setupWizard.h"
+// #include "setupWizard.h"
 #include "streamReader.h"
 #include "wiFiCommands.h"
 
+
 namespace mqtt5nano {
 
-    extern long latestNowMillis;
-
-    extern class Stream *globalSerial;
+   // extern class Stream *globalSerial;
 
     extern EepromItem *eehead;
 
@@ -50,6 +50,7 @@ namespace mqtt5nano {
         getUptime up;
         getServed served;
         getVersion version;
+        getUnixTimeCmd gettime;
 
         void setup(class Stream &serial) {
             globalSerial = &serial;
@@ -60,32 +61,21 @@ namespace mqtt5nano {
             moreScrambled(54321);
 
             int eesize = mqtt5nano::getEitemTotal();
-            eesize = (eesize+3) & 0xFFFFFFFC;
+            eesize = (eesize + 3) & 0xFFFFFFFC;
             serial.print("# EEsize ");
             serial.println(eesize);
 
             EEPROM.begin(eesize);
 
-            // EepromItem *eP = eehead;
-            // while (eP != nullptr) {
-            //     serial.print("ee r1 ");
-            //     serial.print(eP->description);
-            //     serial.print(" ");
-            //     StreamDrain sd(serial);
-            //     eP->readAll(sd);
-            //     serial.print("\n");
-            //     eP = eP->next;
-            // }
+            char defaultShortName[8]; // = "thing-X";
+            char defaultLongName[28]; // = "thing-XXXXXXXXXXXX";
+            getRandomString(defaultShortName, sizeof(defaultShortName) - 1);
+            getRandomString(defaultLongName, sizeof(defaultLongName) - 1);
+            defaultShortName[sizeof(defaultShortName) - 1] = 0;
+            defaultLongName[sizeof(defaultLongName) - 1] = 0;
 
-            char defaultShortName[8];// = "thing-X";
-            char defaultLongName[28];// = "thing-XXXXXXXXXXXX";
-            getRandomString(defaultShortName,sizeof(defaultShortName)-1);
-            getRandomString(defaultLongName,sizeof(defaultLongName)-1);
-            defaultShortName[sizeof(defaultShortName)-1] = 0;
-            defaultLongName[sizeof(defaultLongName)-1] = 0;
-
-            memcpy(defaultShortName,"thing-",6);
-            memcpy(defaultLongName,"thing-",6);
+            memcpy(defaultShortName, "thing-", 6);
+            memcpy(defaultLongName, "thing-", 6);
             hostStash.initialValue = defaultShortName;
             topicStash.initialValue = defaultLongName;
 
@@ -93,48 +83,29 @@ namespace mqtt5nano {
             hostStash.initialValue = "";
             topicStash.initialValue = "";
 
-            // eP = eehead;
-            // while (eP != nullptr) {
-            //     serial.print("ee checking ");
-            //     serial.print(eP->description);
-            //     serial.print(" ");
-            //     serial.print(eP->offset);
-            //     serial.print(" ");
-            //     serial.print(eP->size);
-            //     serial.print("\n");
-            //     eP->checkStarted();
-            //     eP = eP->next;
-            // }
-            
-
             EEPROM.commit();
 
-            // eP = eehead;
-            // while (eP != nullptr) {
-            //     serial.print("ee r2 ");
-            //     serial.print(eP->description);
-            //     serial.print(" ");
-            //     StreamDrain sd(serial);
-            //     eP->readAll(sd);
-            //     serial.print("\n");
-            //     eP = eP->next;
-            // }
-            //EEPROM.end();
-            //EEPROM.begin(eesize);
-
-            pushWizard(makeGetWifi());
+            serial.println("# eeprom done");
+            // pushWizard(makeGetWifi());
         }
 
         void loop(long now, class Stream &serial) {
             globalSerial = &serial;
             latestNowMillis = now;
 
-            serialCommandHandler.loop(now,serial);
+            // serial.println("serialCommandHandler");
+            serialCommandHandler.loop(now, serial);
+
+            // serial.println("wifi.loop");
             wifi.loop(now, serial);
 
+            // serial.println("www.loop");
             www.loop(now, serial);
+
+            // serial.println("mqttClient.loop");
             mqttClient.loop(now, serial);
 
+            // serial.println("TimedItem::LoopAll");
             TimedItem::LoopAll((unsigned long)now);
             delay(1);
         }

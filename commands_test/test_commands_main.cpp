@@ -69,6 +69,26 @@ int main() {
     cout << "hello command tests\n";
 
     {
+        const char *  timeStr = "1676666982";   // Friday, February 17, 2023 12:49:42 PM GMT-08:00
+        long time = slice(timeStr).toLong();
+
+        cout << "slice(timeStr).toLong()" << time << "\n";
+        if ( time != 1676666982 ){
+            cout << "slice(timeStr).toLong() failed" << "\n";
+        }
+
+        latestNowMillis = 12345;
+        millisUnixAdjust = (long long)(time * 1000) - latestNowMillis;
+
+        int utime = getUnixTime();
+
+        if ( utime != 1676666982 ){
+            cout << "getUnixTime() failed" << "\n";
+        }
+
+    }
+
+    {
         const char *sample = "GET /favicon.ico HTTP/1.1\r\nHost: reqbin.com\r\naccepts: *.*\r\n\r\n";
         bool ok = ParsedHttp::isWholeRequest(sample);
         cout << "got http" << ok << "\n";

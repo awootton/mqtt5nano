@@ -38,6 +38,8 @@ namespace mqtt5nano {
 
         // This is the entry point.
         bool parse(slice body, unsigned char packetType, int len);
+        
+        bool parseSubAck(slice body, unsigned char packetType, int len);
 
         // uses outputBuffer for assembly and then writes it to destination.
         bool outputPubOrSub(sink assemblyBuffer, drain *destination);
@@ -45,13 +47,9 @@ namespace mqtt5nano {
         bool outputConnect(sink assemblyBuffer, drain *destination,
                            slice clientID, slice user, slice pass);
 
-        // return a value if key found else return a 'done' slice.
-        slice findKey(const char *key);
+        // return a value if key found else return a '' slice.
+        slice userKeyValueGet(const char *key);
 
-        // int UserKeyVal_len()
-        // {   // sorry about the C++'ism. Returns the length of the UserKeyVal array. ie 16
-        //     return *(&UserKeyVal + 1) - UserKeyVal;
-        // }
     };
 
     /** These are really just for utility

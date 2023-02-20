@@ -18,7 +18,7 @@ namespace mqtt5nano {
             buffer[0] = 0;
             return &buffer[0];
         }
-        int amt = hex::encode((unsigned char *)&base[start], size(), buffer, max - 1);
+        int amt = hex::encode(&base[start], size(), buffer, max - 1);
         buffer[amt] = 0;
         return &buffer[0];
     };
@@ -28,7 +28,7 @@ namespace mqtt5nano {
             return;
         }
         dest.writeByte(0);
-        int amt = hex::encode((unsigned char *)&base[start], size(), &dest.base[dest.start], dest.remaining());
+        int amt = hex::encode(&base[start], size(), &dest.base[dest.start], dest.remaining());
         dest.start += amt;
     };
 
@@ -40,11 +40,53 @@ namespace mqtt5nano {
             }
             int i = 0;
             for (; i < amount; i++) {
-                (buffer)[i] = base[start + i];
+                buffer[i] = base[start + i];
             }
             buffer[i] = 0;
         }
         return &buffer[0];
+    }
+
+    // copy the slice into the buffer, return the buffer.
+    char *slice::copy(char *buffer, int max) {
+        if (empty() == false) {
+            int amount = size();
+            if (amount > max) {
+                amount = max;
+            }
+            int i = 0;
+            for (; i < amount; i++) {
+                buffer[i] = base[start + i];
+            }
+        }
+        return &buffer[0];
+    }
+
+    slice slice::b64Decode(sink *buffer) {
+        slice s = *this;
+        sink d = *buffer;
+        int amt = base64::decode(s.base + s.start, s.size(), d.base + d.start, d.remaining());
+        slice result(d.base + d.start, d.start, d.start + amt);
+        if (buffer->start + amt > buffer->end) {
+            buffer->start = buffer->end;
+        } else {
+            buffer->start += amt;
+        }
+        return result;
+    }
+
+    slice slice::b64Encode(sink *buffer) {
+        slice s = *this;
+        sink d = *buffer;
+        int amt = base64::encode(s.base + s.start, s.size(), d.base + d.start, d.remaining());
+        slice result(d.base + d.start, d.start, d.start + amt);
+        if (buffer->start + amt > buffer->end) {
+            buffer->start = buffer->end;
+        } else {
+            buffer->start += amt;
+        }
+
+        return result;
     }
 
 } // namespace mqtt5nano

@@ -2,26 +2,34 @@
 #pragma once
 
 #include "badjson.h"
+#include "nanoCommon.h"
 
 /** Command is the base class for all the command handlers.
  * All you have to do is declare one and it automatically gets
  * linked in with the rest of them.
  */
 namespace mqtt5nano {
-    
+
     extern int commandsServed;
-    extern long latestNowMillis;
 
-    struct permissionType {
-        bool notAllowed;
-        bool requiresEncryption;
-    };
+    // struct permissionType {
+    //     bool notAllowed;
+    //     bool requiresEncryption;
+    // };
 
-    struct PermissionGroup {
-        permissionType Serial;     // permissions to receive commands from the Serial port.
-        permissionType Local;      // permissions to receive commands from the local network.
-        permissionType Everywhere; // // permissions to receive commands from the internet.
-    };
+    // struct PermissionGroup {
+    //     permissionType Serial;     // permissions to receive commands from the Serial port.
+    //     permissionType Local;      // permissions to receive commands from the local network.
+    //     permissionType Everywhere; // // permissions to receive commands from the internet.
+    // };
+
+    enum CommandSource { 
+        unknown,
+        SerialPort,  // command came from the serial port.
+        Local,   // command came from the local network.
+        Mqtt,   // command came from the mqtt but not with http payload
+        httpInMqtt, // command came from the mqtt with http payload
+        };
 
     struct Args {
     private:
@@ -36,7 +44,7 @@ namespace mqtt5nano {
             badjson::Segment *s = in;
             while (s != nullptr) {
                 c++;
-                s = s->nexts;
+                s = s->next;
             }
             return c;
         }
@@ -45,13 +53,14 @@ namespace mqtt5nano {
             badjson::Segment *s = in;
             while (s != nullptr && c++ < i) {
                 c++;
-                s = s->nexts;
+                s = s->next;
             }
             if (s != nullptr) {
                 return s->input;
             }
             return slice("");
         }
+        CommandSource source = CommandSource::unknown;
     };
 
     class Command // the virtual base class. Aka the interface.
@@ -61,6 +70,7 @@ namespace mqtt5nano {
         friend struct WebServer;
         friend struct MqttCommandClient;
         friend class CmdTestUtil;
+        friend class CommandPipeline;
 
     private:
         Command *next;
@@ -69,7 +79,7 @@ namespace mqtt5nano {
     public:
         const char *name = "";
         const char *description = "";
-        PermissionGroup permissions;
+       // PermissionGroup permissions;
         int argumentCount = 0;
 
         Command();
@@ -78,15 +88,15 @@ namespace mqtt5nano {
     private:
         virtual void init(){};
         void parseTheName(); // since the name can be several words, chop it up
-        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out);
+        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out, CommandSource source);
     };
 
     Command *getHead();
 
-    class CmdTestUtil {
+    class CmdTestUtil { // only for testing.
     public:
         static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out) {
-            Command::process(incomingCommandLine, params, out);
+            Command::process(incomingCommandLine, params, out, unknown);
         }
     };
 }

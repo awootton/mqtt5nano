@@ -1,6 +1,7 @@
 
 
 #include "wiFiCommands.h"
+#include "commonCommands.h"
 
 namespace mqtt5nano {
 
@@ -39,14 +40,14 @@ namespace mqtt5nano {
     freeMem freeMemCmd;
 
 
-    void writeStarredPass(drain &out) {
-        char buff[passStash.size];
-        SinkDrain tmp(buff, passStash.size);
-        passStash.read(tmp);
+    void writeStarredPass( EepromItem &stash, drain &out) {
+        char buff[stash.size];
+        SinkDrain tmp(buff, stash.size);
+        stash.read(tmp);
         if ( tmp.getWritten().size() == 0 ){
             return;
         }
-        for (int i = 1; i < 20; i++) {
+        for (int i = 1; i < 8; i++) {
            out.writeByte('*');
         }
     }

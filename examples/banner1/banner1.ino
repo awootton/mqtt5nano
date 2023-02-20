@@ -1,21 +1,29 @@
 
-
-#define DEBUG_ESP_CORE 1
-
 #include "mqtt5nano.h"
 
 #include <MD_MAX72xx.h>
 #include <MD_Parola.h>
 #include <SPI.h>
 
+// Arduino code for MAX7219 as an IOT things using mqtt5nano and Parola.
+
 // Define the number of devices we have in the chain and the hardware interface
 // NOTE: These pin numbers will probably not work with your hardware and may
 // need to be adapted
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW // or maybe PAROLA_HW
 #define MAX_DEVICES 4
-#define CLK_PIN D5  // aka sck aka gpio 14 aka HSCK
-#define DATA_PIN D7 // aka mosi aka gpio 13 aka RXD2 aka HMOSI
-#define CS_PIN D8   // aka cs aka gpio 15 aka TXD2 aka HCS
+
+#ifdef ESP8266
+#define CLK_PIN D5  // D5 aka sck aka gpio 14 aka HSCK
+#define DATA_PIN D7 // D7 aka mosi aka gpio 13 aka RXD2 aka HMOSI
+#define CS_PIN D8       // D8 aka cs aka gpio 15 aka TXD2 aka HCS
+#endif
+
+#ifdef ESP32
+#define CLK_PIN 18  //GPIO18
+#define DATA_PIN 23 //GPIO23
+#define CS_PIN 5    // GPIO5
+#endif
 
 // HARDWARE SPI:
 MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
@@ -99,9 +107,12 @@ void setup() {
 
     P.begin();
     P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
+
+    Serial.println("setup done");
 }
 
 void loop() {
+
     one.loop(millis(), Serial);
 
     if (P.displayAnimate()) {

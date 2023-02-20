@@ -40,9 +40,11 @@ namespace base64 {
     // encode the bytes from src[0] to src[srcLen] into dest.
     // dest has a size of dest_max which must be greater than src_len*4/3
     // the number of bytes written is returned.
-    int encode(const unsigned char *src, int srcLen, char *dest, int destMax) {
+    int encode(const char *ssrc, int srcLen, char *dest, int destMax) {
         int srci = 0;
         int dsti = 0;
+
+        const unsigned char *src = (const unsigned char *)ssrc;
 
         while (srci < srcLen) {
             dest[dsti++] = encodeB64URLTable[src[0 + srci] >> 2];
@@ -86,11 +88,12 @@ namespace base64 {
     // dest has a size of destMax which must be greater than srcLen*3/4
     // The number of bytes written is returned.
     // GIGO.
-    int decode(const unsigned char *src, int srcLen, char *dest, int destMax) {
+    int decode(const char *ssrc, int srcLen, char *dest, int destMax) {
         initdecodetable();
 
         int srci = 0;
         int dsti = 0;
+        const unsigned char *src = (const unsigned char *)ssrc;
 
         while (srci < srcLen) {
             if (src[0 + srci] == 0) {
@@ -170,7 +173,7 @@ namespace hex {
     // Encode the bytes from src[0] to src[srcLen] into dest.
     // dest has a size of destMax which must be greater than srcLen*2
     // The number of bytes written is returned.
-    int encode(const unsigned char *src, int srcLen, char *dest, int destMax) {
+    int encode(const char *src, int srcLen, char *dest, int destMax) {
         int srci = 0;
         int dsti = 0;
 
@@ -201,7 +204,7 @@ namespace hex {
     // Decode the bytes from src[0] to src[srcLen] into dest. Unless null encountered.
     // dest has a size of destMax which must be greater than srcLen*1/2
     // The number of bytes written is returned.
-    int decode(const unsigned char *src, int srcLen, char *dest, int destMax) {
+    int decode(const char *src, int srcLen, char *dest, int destMax) {
         int srci = 0;
         int dsti = 0;
 
@@ -236,7 +239,9 @@ namespace base64 {
     // assume it's really hex and decode that.
     // Probability of a 48 char base64 encoding being all hex is (16/64)^48 = 1/(2^96)
 
-    int decodeAll(const unsigned char *src, int srcLen, char *dest, int destMax) {
+    int decodeAll(const char *ssrc, int srcLen, char *dest, int destMax) {
+
+        const unsigned char *src = (const unsigned char *)ssrc;
         int destPos = 0; // return this
         initdecodetable();
         int max1 = 0;
@@ -283,9 +288,9 @@ namespace base64 {
         }
 
         if (max2 - max1 >= 48 && washex) {
-            destPos = hex::decode(src + max1, max2 - max1, dest, destMax);
+            destPos = hex::decode((const char *)src + max1, max2 - max1, dest, destMax);
         } else {
-            destPos = base64::decode(src + max1, max2 - max1, dest, destMax);
+            destPos = base64::decode((const char*)src + max1, max2 - max1, dest, destMax);
         }
 
         return destPos;

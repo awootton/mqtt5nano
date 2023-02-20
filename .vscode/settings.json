@@ -97,6 +97,7 @@
         "source_location": "cpp",
         "stop_token": "cpp",
         "*.ipp": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "charconv": "cpp"
     }
 }

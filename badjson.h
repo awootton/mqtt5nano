@@ -17,22 +17,22 @@ namespace badjson {
 
     // the virtual base class. Aka the interface.
     struct Segment {
-        Segment *nexts;
+        Segment *next;
         slice input;
 
         Segment() {
             segmentsAllocated++;
             input.base = nullptr;
-            nexts = nullptr;
+            next = nullptr;
         }
         virtual ~Segment() {
             segmentsAllocated--;
-            if (nexts)
-                delete nexts;
+            if (next)
+                delete next;
         }
 
-        Segment *Next() { return nexts; }
-        void SetNext(Segment *s) { nexts = s; };
+        Segment *Next() { return next; }
+        void SetNext(Segment *s) { next = s; };
 
         // these return false if it failed.
         // aka they return if it's ok.

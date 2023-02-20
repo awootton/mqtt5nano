@@ -16,13 +16,13 @@
  */
 namespace mqtt5nano {
 
-    extern class Stream *globalSerial;
+    // extern class Stream *globalSerial;
 
-    struct   EepromItem *getEitemHead(); // do we need this?
+    struct EepromItem *getEitemHead(); // do we need this?
     // this is for EEPROM.begin(mqtt5nano::getEitemTotal()); which is needed in setup.
     int getEitemTotal();
 
-    // initAll will check if they need to be initialized. 
+    // initAll will check if they need to be initialized.
     void initAllEeItem();
 
     // we could make an EEDrain and people can just write
@@ -46,16 +46,29 @@ namespace mqtt5nano {
 
         bool read(drain &out) {
 
-            //checkStarted();
+            // checkStarted();
             int i;
             for (i = 0; i < size; i++) {
                 char c = EEPROM.read(offset + i);
                 if (c == 0) {
                     break;
                 }
-                out.writeByte(c);
+                bool ok = out.writeByte(c);
+                if (!ok) {
+                    return false;
+                }
             }
-            return true; // ok
+            return true; // ok TODO: check for drain full
+        }
+
+        slice readSlice(SinkDrain d) {
+            int startPos = d.buffer.start;
+            bool ok = read(d);
+            if (!ok) {
+                return slice();
+            }
+            slice result(d.buffer.base, startPos, d.buffer.start);
+            return result;
         }
 
         bool readAll(drain &out) {
@@ -64,7 +77,7 @@ namespace mqtt5nano {
             for (i = 0; i < size; i++) {
                 char c = EEPROM.read(offset + i);
                 // globalSerial->print(c);
-                //if (c == 0) {
+                // if (c == 0) {
                 //    break;
                 //}
                 out.writeByte(c);
@@ -72,29 +85,29 @@ namespace mqtt5nano {
             return true; // ok
         }
 
-
-        private:
+    private:
         void writeone(int i, char c) {
             EEPROM.write(i, c);
-           // delay(1);
+            // delay(1);
             // or is is put?
             // EEPROM.put(i, &c);
             // globalSerial->print(i);
         }
-        public:
-        void checkStarted(){
-            if ( started ){
+
+    public:
+        void checkStarted() {
+            if (started) {
                 return;
             }
             started = true;
-            //globalSerial->print("ee starting ");
-            //globalSerial->println(description);
+            // globalSerial->print("ee starting ");
+            // globalSerial->println(description);
 
             int i;
             int qcount = 0;
             for (i = 0; i < size; i++) { // read the values once for strlen
                 char c = EEPROM.read(offset + i);
-                //delay(1);
+                // delay(1);
                 if (c == 0) {
                     break;
                 }
@@ -106,7 +119,7 @@ namespace mqtt5nano {
                 globalSerial->print("# qcount ");
                 globalSerial->println(qcount);
             }
-            if ( i == size || (qcount * 2 >= size)) { // happens when never inited.
+            if (i == size || (qcount * 2 >= size)) { // happens when never inited.
                 // we really don't like never inited.
                 globalSerial->print("# init ");
                 globalSerial->print(description);
@@ -114,7 +127,7 @@ namespace mqtt5nano {
                 globalSerial->println(initialValue);
                 // clear it.
                 for (i = 0; i < size; i++) {
-                    writeone(offset+i,0);
+                    writeone(offset + i, 0);
                 }
                 // write the default
                 write(slice(initialValue));
@@ -124,27 +137,27 @@ namespace mqtt5nano {
         bool write(slice bytes) {
             // checkStarted();
             int i;
-            globalSerial->print("# eeprom # ");
-            for ( i = 0; i < size - 1; i++) {
+            // globalSerial->print("# eeprom # ");
+            for (i = 0; i < size - 1; i++) {
                 if (i >= bytes.size()) {
                     break;
                 }
                 char c = bytes.base[bytes.start + i];
                 writeone(offset + i, c);
-                globalSerial->print(c);
+                // globalSerial->print(c);
             }
             writeone(offset + i, 0); // null terminated
 
-            //int code = EEPROM.getCcode();
+            // int code = EEPROM.getCcode();
 
             bool ok = EEPROM.commit();
             // EEPROM.end();// commit and delete buffer
             // EEPROM.begin(getEitemTotal());// new the buffer and read it.
 
-            globalSerial->print(" ");
-            globalSerial->print(ok);
-            // globalSerial->print(code);
-            globalSerial->print("\n");
+            // globalSerial->print(" ");
+            // globalSerial->print(ok);
+            //  globalSerial->print(code);
+            // globalSerial->print("\n");
             return true; // ok
         }
     };

@@ -50,18 +50,42 @@ namespace mqtt5nano {
     }
 
     class HelpCommand : Command {
-        // friend class Command;
 
     public:
         void
         init() override {
             name = "help";
-            description = "the description of every command";
+            description = "lists all commands. 🔓 means no encryption required";
         }
         void
         execute(Args args, badjson::Segment *params, drain &out) override {
             Command *cmd = getHead();
+            int count = 0;
             while (cmd) {
+                count++;
+                cmd = cmd->next;
+            }
+            Command *cmds[count];
+            cmd = getHead();
+            int i = 0;
+            while (cmd) {
+                cmds[i] = cmd;
+                i++;
+                cmd = cmd->next;
+            }
+            // sort the list in cmd
+            for (int i = 0; i < count; i++) {
+                for (int j = i + 1; j < count; j++) {
+                    if (strcmp(cmds[i]->name, cmds[j]->name) > 0) {
+                        Command *tmp = cmds[i];
+                        cmds[i] = cmds[j];
+                        cmds[j] = tmp;
+                    }
+                }
+            }
+
+            for (int i = 0; i < count; i++) {
+                cmd = cmds[i];
                 // out.write(cmd->name);
                 // this one quotes the words and I don't like that
                 // ToString(*cmd->parsed, out);
@@ -69,7 +93,7 @@ namespace mqtt5nano {
                 badjson::Segment *s = cmd->parsed;
                 while (s != nullptr) {
                     out.write(s->input);
-                    s = s->nexts;
+                    s = s->next;
                     if (s != nullptr) {
                         out.write(" ");
                     }
@@ -93,6 +117,34 @@ namespace mqtt5nano {
                 cmd = cmd->next;
             }
         }
+
+        void test() { // for the linkedin article
+            Command *cmd = getHead();
+            int count = 0;
+            while (cmd) {
+                count++;
+                cmd = cmd->next;
+            }
+            Command *cmds[count];
+            cmd = getHead();
+            int i = 0;
+            while (cmd) {
+                cmds[i] = cmd;
+                i++;
+                cmd = cmd->next;
+            }
+
+            // sort the list in cmd
+            for (int i = 0; i < count; i++) {
+                for (int j = i + 1; j < count; j++) {
+                    if (strcmp(cmds[i]->name, cmds[j]->name) > 0) {
+                        Command *tmp = cmds[i];
+                        cmds[i] = cmds[j];
+                        cmds[j] = tmp;
+                    }
+                }
+            }
+        }
     };
 
     HelpCommand helpcmd;
@@ -103,13 +155,13 @@ namespace mqtt5nano {
     // Note that we execute all the matches even if more than one.
     void
     Command::process(badjson::Segment *incomingCommandLine,
-                     badjson::Segment *params, drain &out) {
+                     badjson::Segment *params, drain &out, CommandSource source) {
         // out.write("# Command::process");
         Command *command = head;
         while (command != nullptr) {
             if (command->name[0] == 0) { // lazy init
                 command->init();
-                command->parseTheName();// allocs memory.
+                command->parseTheName(); // allocs memory.
             }
             command = command->next;
         }
@@ -122,16 +174,18 @@ namespace mqtt5nano {
                 badjson::Segment *args = incomingCommandLine;
                 badjson::Segment *tmp = command->parsed;
                 while (tmp) { // walk the list
-                    tmp = tmp->nexts;
-                    args = args->nexts;
+                    tmp = tmp->next;
+                    args = args->next;
                     if (args == nullptr) {
                         break;
                     }
                 }
                 foundOne = true;
-                command->execute(Args(args), params, out);
+                Args cargs(args);
+                cargs.source = source;
+                command->execute(cargs, params, out);
                 commandsServed++;
-                // do we have to? this fucks up favicon: 
+                // do we have to? this fucks up favicon:
                 out.write("\n");
             }
             command = command->next;
@@ -141,7 +195,10 @@ namespace mqtt5nano {
             badjson::ToString(*incomingCommandLine, out);
             out.write("\n");
             out.write("See help for available commands:\n");
-            helpcmd.execute(Args(incomingCommandLine), nullptr, out);
+            foundOne = true;
+            Args cargs(incomingCommandLine);
+            cargs.source = source;
+            helpcmd.execute(cargs, nullptr, out);
         }
     }
 

@@ -2,6 +2,7 @@
 #pragma once
 
 namespace mqtt5nano {
+
     // Slice represents a read only sequence of bytes. The size of the slice, and the underlaying array,
     // are limited to 64k.
     // Some of the methods increment the 'start' as they parse.
@@ -9,13 +10,15 @@ namespace mqtt5nano {
 
     // We don't malloc or free or new these ever. They live embedded in structs
     // or as local variables. The underlaying buffer is another story.
-    // many times the underlaying buffer is, in fact, a Serial or tcp receive buffer.
+    // Many times the underlaying buffer is, in fact, a Serial or tcp receive buffer. And we wish to parse it in place.
 
-    struct sink; // sink is the not-read-only version of slice. defined below
-    // struct fount; // fount is like a slice except the readByte is virtual and not just from a buffer.
-    struct drain; // is like a sink except the writeByte is virtual and not from a buffer.
+
+    struct drain; // is like a sink except the writeByte is virtual and not from a buffer.   channel path
+
+    struct sink; // sink is the not-read-only version of slice. Defined below.  collector      buffer
 
     struct slice {
+
         const char *base;
         unsigned short int start;
         unsigned short int end;
@@ -229,12 +232,57 @@ namespace mqtt5nano {
             return false;
         }
 
-        // for debugging.
-        // Copy out the slice into the buffer.
-        char *getCstr(char *buffer, int max); // in the cpp
-        // copy the slice into the buffer while expanding into hex.
-        char *gethexstr(char *buffer, int max); // in the cpp
-        void gethexstr(sink dest);              // defined in the cpp
+        int indexOf(char c) {
+            int i = 0;
+            for (i = 0; i < size(); i++) {
+                if (base[start + i] == c) {
+                    return i;
+                }
+                 
+            }
+            return -1;
+        }
+
+        bool startsWith(slice s) {
+            int i = 0;
+            for (i = 0; i < size(); i++) {
+                if (s.empty()) {
+                    return true;
+                }
+                if (base[start + i] != s.base[s.start]) {
+                    return false;
+                }
+                s.start++;
+            }
+            if (s.empty()) {
+                return true;
+            }
+            return false;
+        }
+
+        long toLong() {
+            long val = 0;
+            for (int i = start; i < end; i++) {
+                val = val * 10 + base[i] - '0';
+            }
+            return val;
+        }
+
+        slice b64Decode(sink *buffer);
+
+        slice b64Encode(sink *buffer);
+
+        // copy out the slice into the buffer.
+        char *copy(char *buffer, int max);
+
+        // Copy out the slice into the array.
+        char *getCstr(char *buffer, int max);
+
+        // copy the slice into the array while expanding into hex.
+        char *gethexstr(char *buffer, int max);
+
+        // genarate hex from the slice into the sink.
+        void gethexstr(sink dest);
 
     }; // slice
 
@@ -381,13 +429,31 @@ namespace mqtt5nano {
             }
             return true;
         }
-        bool write(const char *cP) // c string
+        bool writeCstr(const char *cP) // c string
         {
             for (; *cP != 0; cP++) {
                 writeByte(*cP);
             }
             bool ok = true;
             return ok;
+        }
+        bool print(const char *cP) // c string
+        {
+            for (; *cP != 0; cP++) {
+                writeByte(*cP);
+            }
+            bool ok = true;
+            return ok;
+        }
+        // // This will be used in the case where the argument is F("....")
+        // void print(const __FlashStringHelper *text) {
+        //     char* buffer[17];
+        //     strncpy_P(buffer, (const char*)text, 16);  // _P is the version to read from program space
+        // }
+
+        bool print(int n) // c string
+        {
+            return writeInt(n);
         }
 
     private:

@@ -2,15 +2,15 @@
 #pragma once
 
 #if defined(ARDUINO)
-//  Nothing. Serial is always defined.
-#include <Arduino.h>
+//  Nothing. Serial is always defined in arduino.
+// #include <Arduino.h>
 #else
 
 extern void delay(int);
 
 // This is a mock.
 // because there's no Serial when not in arduino !!!!
-// so this file keeps the compiler happy when testng with C++
+// so this file keeps the compiler happy when testing with C++
 // do we need functinality here?
 // the wifi tcp uses this same interface.
 // TODO: hook it up to stdio
@@ -26,11 +26,7 @@ using namespace mqtt5nano;
 
 class Stream {
 public:
-    // todo: make the output a drain instead of always cout
-
-    //    size_t print(const String & str){
-    //     return 0;
-    //    }
+ 
     virtual size_t print(const char *dp) {
         cout << dp;
         return 1;
@@ -45,6 +41,14 @@ public:
     }
     virtual size_t println(int i) {
         cout << i << "\n";
+        return 0;
+    }
+    virtual size_t print(int i) {
+        cout << i ;
+        return 0;
+    }
+    virtual size_t print(unsigned int i) {
+        cout << i ;
         return 0;
     }
     virtual size_t print(char c) {
@@ -156,6 +160,8 @@ struct DrainStream : Stream {
 };
 
 #endif
+
+extern class Stream *globalSerial;
 
 // Copyright 2022 Alan Tracey Wootton
 //

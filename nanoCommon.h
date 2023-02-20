@@ -10,19 +10,33 @@ namespace mqtt5nano {
 
     void moreScrambled(int entropy);
     void moreScrambled(const char *cP);
+
+    extern long long latestNowMillis;
+    extern long long millisUnixAdjust;
+
+    extern int getUnixTime();
 }
+
+  
 
 #if defined(ARDUINO)
 
-#else
-
-    #define PROGMEM
-
-    extern void delay(int);
-
-    #define memcpy_P(a,b,c) memcpy(a,b,c)
-
-
+#if defined(ESP32)
+#define PROGMEM
 #endif
 
- 
+#else
+
+#include "mockStream.h"
+
+#define F(a) a
+
+#define strncpy_P strncpy
+
+#define PROGMEM
+
+extern void delay(int);
+
+#define memcpy_P(a, b, c) memcpy(a, b, c)
+
+#endif

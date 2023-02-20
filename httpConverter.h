@@ -133,6 +133,7 @@ namespace mqtt5nano {
             return s;
         }
 
+        // a very basic http parser. It does not handle all cases.
         bool convert(slice s) {
             if (!isWholeRequest(s)) {
                 return false; // not ok
@@ -158,7 +159,15 @@ namespace mqtt5nano {
             int limit = 10;
             while (path.start < path.end && !path.startsWith(" ") && !path.startsWith("?")) {
                 slice word = pass(path, '/');
+                bool startsWithEqual = false;
+                if (word.base[word.start] == '=') {
+                    word.start++;// skip the = if the command starts with =
+                    startsWithEqual = true;
+                }
                 slice tmp = passNotPathDelim(word);
+                if (startsWithEqual) {
+                    word.start--; // put the = back
+                }
                 word.end = tmp.start;
                 addWord(word);
                 path.start = word.end;
@@ -229,9 +238,7 @@ namespace mqtt5nano {
             if (!last.startsWith("\r\n\r\n")) {
                 return false;
             }
-            bool startsOk = s.startsWith("GET ");
-            startsOk |= s.startsWith("OPTIONS ");
-            startsOk |= s.startsWith("PUT ");
+            bool startsOk = s.startsWith("GET ") | s.startsWith("OPTIONS ");
             // post? 
             if (! startsOk )
             {
@@ -240,6 +247,32 @@ namespace mqtt5nano {
             // TODO: more later
             return true;
         }
+
+                slice find( const char * key, badjson::Segment * pP){
+            while( pP != nullptr ){
+                if( pP->input.equals(key) ){
+                    pP = pP->next;
+                    if( pP != nullptr ){
+                        return pP->input;
+                    }
+                }
+                pP = pP->next;
+                if( pP == nullptr ){
+                    return slice();
+                }
+                pP = pP->next;
+            }
+            return slice();
+        }
+
+        slice findParam( const char * key){
+            slice s = find(key,params);
+            if (s.length() == 0) {
+                s = find(key,headers);
+            }
+            return s;
+        }
+
     };
 
     ParsedHttp IsHttp(slice input);

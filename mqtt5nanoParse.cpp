@@ -4,6 +4,97 @@
 
 namespace mqtt5nano {
 
+    // parseSubAck parses a suback packet and would be also compatible with lots of other packets. except for pub.
+    // TODO: just modify parse to skip the topic name and packet id if is .
+    bool mqttPacketPieces::parseSubAck(const slice body, const unsigned char _packetType, const int len) {
+         
+       int packetType = (_packetType >> 4);
+       bool ok = true;
+        reset();
+
+        packetType = (_packetType >> 4);
+        QoS = (_packetType >> 1) & 3;
+
+        if (packetType < CtrlConn || packetType > CtrlAuth) {
+            ok = false;
+            return ok;
+        }
+
+        slice pos = body;
+        // pos.printhex();
+       
+        if (packetType != CtrlPublish) {
+            // ok. parse a pub.
+            // atw TopicName = pos.getBigFixedLenString();
+            // TopicName.printstr();
+            // pos.printhex();
+            // atw if (QoS) {
+                PacketID = pos.getBigFixLenInt(); // this might be wrong endian FIXME:
+            //}
+            int propLen = pos.getBigEndianVarLenInt();
+
+            props.base = pos.base;
+            props.start = pos.start;
+            props.end = props.start + propLen;
+            pos.start = props.end;
+
+            // props.printhex();
+            if (props.size()) {
+                int userIndex = 0;
+                int maxUserIndex = userKeyValLen;
+                // parse the props
+                slice ptmp = props;
+                while (ptmp.empty() == false) {
+                    int key = ptmp.readByte();
+                    if (key == propKeyRespTopic) {
+                        RespTopic = ptmp.getBigFixedLenString();
+                        // RespTopic.printstr("resp");
+                    } else if (key == propKeyCorrelationData) {
+                        CorrelationData = ptmp.getBigFixedLenString();
+                        // RespTopic.printstr("corr");
+                    } else if (key == propKeyUserProps) {
+                        slice k = ptmp.getBigFixedLenString();
+                        // k.printstr();
+                        slice v = ptmp.getBigFixedLenString();
+                        // v.printstr();
+                        if (userIndex < maxUserIndex) {
+                            UserKeyVal[userIndex] = k;
+                            UserKeyVal[userIndex + 1] = v;
+                            userIndex += 2;
+                        }
+                    } else {
+                        // what happens now?
+                        char code = getPropertyLenCode(key);
+                        if (code & 0x0F) {
+                            if (code == char(0xFF)) {
+                                ok = false;
+                                return ok; // we're done and broken.
+                            }
+                            if (code == 0x0F) {
+                                int dummy = ptmp.getBigEndianVarLenInt();
+                            } else { // pass 'code' bytes.
+                                ptmp.start += code;
+                            }
+                        } else {
+                            code = code / 16;
+                            // pass 'code' strings.
+                            for (int i = 0; i < code; i++) {
+                                slice aslice = ptmp.getBigFixedLenString();
+                            }
+                        }
+                    }
+                }
+            }
+
+            Payload = pos;
+            Payload.end = body.start + len;
+            // and we're done.
+        } else {
+            // worry about the body of the other packets later. TODO:
+        }
+        return ok;
+    }
+
     // return ok, not fail.
     bool mqttPacketPieces::parse(const slice body, const unsigned char _packetType, const int len) {
         bool ok = true;
@@ -19,6 +110,9 @@ namespace mqtt5nano {
 
         slice pos = body;
         // pos.printhex();
+        if( packetType == CtrlSubAck ){
+            return parseSubAck(body, _packetType,  len);
+        }
         if (packetType == CtrlPublish) {
             // ok. parse a pub.
             TopicName = pos.getBigFixedLenString();
@@ -181,7 +275,7 @@ namespace mqtt5nano {
     // we don't have to buffer payload.
     // NOTE: when generating Subscribe packets the topic must be in the TopicName.
     // returns ok
-
+    // FIXME: this is a mess. We need to clean it up. Get rid of the assemblyBuffer
     bool mqttPacketPieces::outputPubOrSub(sink assemblyBuffer, drain *destination) {
         // We're filling a buffer. We'll actually generate an array
         // of slices that are in the buffer that may have small gaps between them.
@@ -268,13 +362,13 @@ namespace mqtt5nano {
         return ok;
     };
 
-    // return a value if key found else return a 'done' slice.
-    slice mqttPacketPieces::findKey(const char *key) {
+    // return a value if key found else return a '' slice.
+    slice mqttPacketPieces::userKeyValueGet(const char *key) {
         int size = userKeyValLen;
         for (int i = 0; i < size; i += 2) {
             slice s = UserKeyVal[i];
             if (s.equals(key)) {
-                return s;
+                return UserKeyVal[i + 1];
             }
         }
         slice bads;
@@ -329,7 +423,7 @@ namespace mqtt5nano {
         slice extent;
         extent.start = 0;
         extent.base = buffer;
-        int amount = hex::decode((unsigned char *)hexstr, 0x7FFF, buffer, size);
+        int amount = hex::decode(hexstr, 0x7FFF, buffer, size);
         extent.end = amount;
         return extent;
     };
