@@ -36,8 +36,8 @@ namespace badjson {
 
         // these return false if it failed.
         // aka they return if it's ok.
-        virtual bool GetQuoted(drain &s);
-        virtual bool Raw(drain &s);
+        virtual bool GetQuoted(Destination &s);
+        virtual bool Raw(Destination &s);
         virtual Segment *GetChildren(); // always nullptr unless parent
         virtual bool WasArray();        // if parent true means it was [] and false means {}
     };
@@ -48,18 +48,16 @@ namespace badjson {
         bool wasArray; // eg. started with [ and not {
 
         Parent() {
-            //segmentsAllocated++;
             children = 0;
         }
         virtual ~Parent() {
-            //segmentsAllocated--;
             if (children) {
                 delete (children);
             }
         };
 
-        bool GetQuoted(drain &s) override;
-        bool Raw(drain &s) override;
+        bool GetQuoted(Destination &s) override;
+        bool Raw(Destination &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -76,41 +74,35 @@ namespace badjson {
         RuneArray() {
             theQuote = 0;
             hadQuoteOrSlash = false;
-            //segmentsAllocated ++;
         }
         virtual ~RuneArray(){
-            //segmentsAllocated--;
         };
 
         // returns false if not ok.
-        bool GetQuoted(drain &s) override;
-        bool Raw(drain &s) override;
+        bool GetQuoted(Destination &s) override;
+        bool Raw(Destination &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
 
     struct Base64Bytes : Segment {
         Base64Bytes() {
-            //segmentsAllocated++;
         }
         virtual ~Base64Bytes(){
-            //segmentsAllocated--;
         };
-        bool GetQuoted(drain &s) override;
-        bool Raw(drain &s) override;
+        bool GetQuoted(Destination &s) override;
+        bool Raw(Destination &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
 
     struct HexBytes : Segment {
         HexBytes() {
-            //segmentsAllocated++;
         }
         virtual ~HexBytes(){
-            // segmentsAllocated--;
         };
-        bool GetQuoted(drain &s) override;
-        bool Raw(drain &s) override;
+        bool GetQuoted(Destination &s) override;
+        bool Raw(Destination &s) override;
         Segment *GetChildren() override;
         bool WasArray() override;
     };
@@ -127,7 +119,7 @@ namespace badjson {
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // evrything is double quoted.
-    bool ToString(Segment &segment, drain &dest); // in the cpp
+    bool ToString(Segment &segment, Destination &dest); // in the cpp
 
     typedef unsigned char rune;
 

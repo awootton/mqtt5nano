@@ -10,7 +10,7 @@ namespace mqtt5nano {
 
         ~WizardScreen() {}
 
-        virtual void makeMessage(drain &out){};
+        virtual void makeMessage(Destination &out){};
 
         virtual void execute(int picked, const char *typed){};
     };
@@ -19,9 +19,9 @@ namespace mqtt5nano {
     WizardScreen *makeGetPass();
     WizardScreen *makeGetShortName();
     void pushWizard(WizardScreen *a);
-    void makeMessage(drain &out);
+    void makeMessage(Destination &out);
     void execute(int picked, const char *typed);
-    void clearScreen(drain &out);
+    void clearScreen(Destination &out);
     int wizardStackSize();
 
     struct intro : WizardScreen {
@@ -30,7 +30,7 @@ namespace mqtt5nano {
             // delete ??
         }
 
-        void makeMessage(drain &out) override {
+        void makeMessage(Destination &out) override {
 
             clearScreen(out);
 
@@ -62,7 +62,7 @@ namespace mqtt5nano {
             // delete the ssid list
         }
 
-        void makeMessage(drain &out) override {
+        void makeMessage(Destination &out) override {
 
             clearScreen(out);
 
@@ -85,7 +85,7 @@ namespace mqtt5nano {
             // delete the ssid list
         }
 
-        void makeMessage(drain &out) override {
+        void makeMessage(Destination &out) override {
 
             clearScreen(out);
 
@@ -110,7 +110,7 @@ namespace mqtt5nano {
             // delete the ssid list
         }
 
-        void makeMessage(drain &out) override {
+        void makeMessage(Destination &out) override {
 
             clearScreen(out);
 

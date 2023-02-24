@@ -42,8 +42,8 @@ namespace nanocrypto {
     // use slice instead of cstr.
     void getBoxKeyPairFromPassphrase(const char *password, char publicKey[32], char privateKey[32]);
 
-    bool box(sink *destination, slice message, char nonce[24], char pubkey[32], char privkey[32]);
+    bool box(ByteCollector *destination, slice message, char (&nonce)[24], char (&pubkey)[32], char (&privkey)[32]);
 
-    bool unbox(sink *destination, slice encrypted, char nonce[24], char pubkey[32], char privkey[32]);
+    bool unbox(ByteCollector *destination, slice encrypted, char (&nonce)[24], char (&pubkey)[32], char (&privkey)[32]);
 
 }

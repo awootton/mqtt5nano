@@ -115,10 +115,10 @@ int main()
 
     // mqttBuffer1024 buffer;
     char assemblyArray[2048];
-    sink assemblyBuffer(assemblyArray, 2048);
+    ByteCollector assemblyBuffer(assemblyArray, 2048);
 
     mqttBuffer1024 result; // just a buffer
-    SinkDrain connDestination;
+    ByteDestination connDestination;
     connDestination.buffer = result.getSink(); // set up a sink that writes to the buffer
 
     slice clientID = slice("client-id-WTF");
@@ -144,7 +144,7 @@ int main()
     mqttPacketPieces parser;
 
     char fatbuffer[4096];
-    sink collected(fatbuffer, 4096);
+    ByteCollector collected(fatbuffer, 4096);
 
     unsigned int lastTime = millis();
 
@@ -230,10 +230,10 @@ bool sendSubscribe( int  sock ) {
     mqttBuffer1024 result ;
 
     char assemblyArray[2048];
-    sink assemblyBuffer(assemblyArray, 2048);
+    ByteCollector assemblyBuffer(assemblyArray, 2048);
 
     // mqttBuffer1024 result;
-    SinkDrain subDestinationBytes;
+    ByteDestination subDestinationBytes;
     subDestinationBytes.buffer = result.getSink();
 
     bool subFail = subscribe.outputPubOrSub(assemblyBuffer, &subDestinationBytes);

@@ -1,4 +1,3 @@
-
 #pragma once
 
 namespace mqtt5nano {
@@ -12,10 +11,12 @@ namespace mqtt5nano {
     // or as local variables. The underlaying buffer is another story.
     // Many times the underlaying buffer is, in fact, a Serial or tcp receive buffer. And we wish to parse it in place.
 
+    // ByteCollector is the not-read-only version of slice.
+    // 'start' is past the last byte written and 'end' is the limit of the array.
+    struct ByteCollector;
 
-    struct drain; // is like a sink except the writeByte is virtual and not from a buffer.   channel path
-
-    struct sink; // sink is the not-read-only version of slice. Defined below.  collector      buffer
+    // Destination is like a ByteCollector except the writeByte is virtual. Bytes are written to a ByteCollector or to a stream or cout etc.
+    struct Destination;
 
     struct slice {
 
@@ -37,14 +38,16 @@ namespace mqtt5nano {
             start = 0;
             end = len;
         }
+
+        // manual init
         slice(const char *str, int i1, int i2) {
             base = str;
             start = i1;
             end = i2;
         }
 
-        // Init a slice with the sink ptr,start,end
-        slice(sink s);
+        // Init a slice with the ByteCollector ptr,start,end
+        slice(ByteCollector s);
 
         bool empty() {
             if (!base || start >= end) {
@@ -59,10 +62,13 @@ namespace mqtt5nano {
             }
             return end - start;
         }
+
         int length() {
             return size();
         }
+
         static const char *emptyStr; // in the cpp
+
         const char *charPointer()    // a pointer to the first char. not null terminated
         {
             if (size()) {
@@ -101,6 +107,7 @@ namespace mqtt5nano {
             } while (tmp >= 128);
             return val;
         };
+
         int getLittleEndianVarLenInt() // advances start
         {
             int val = 0;
@@ -158,6 +165,7 @@ namespace mqtt5nano {
             start = result.end;
             return result;
         };
+
         // getBigFixedLenString reads a var len int and then that many chars
         // return a slice
         slice getBigFixedLenString() // advances start
@@ -215,6 +223,7 @@ namespace mqtt5nano {
             }
             return true;
         }
+
         // startsWith returns true if the slice starts with the str
         bool startsWith(const char *str) {
             int i = 0;
@@ -232,17 +241,39 @@ namespace mqtt5nano {
             return false;
         }
 
+        bool contains(const char *str) {
+            if (str[0] == 0) {
+                return false;
+            }
+            int i = 0;
+            for (i = 0; i < size(); i++) {      
+                if (base[start + i] == str[0]) {
+                    int j = 1;
+                    for (; str[j]!=0; j++) {
+                        if (base[start + i + j] != str[j]) {
+                            break;
+                        }
+                    }
+                    if (str[j] == 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // indexOf returns the index of the first occurance of c in the slice.  
         int indexOf(char c) {
             int i = 0;
             for (i = 0; i < size(); i++) {
                 if (base[start + i] == c) {
                     return i;
                 }
-                 
             }
             return -1;
         }
 
+        // startsWith returns true if the slice starts with the str
         bool startsWith(slice s) {
             int i = 0;
             for (i = 0; i < size(); i++) {
@@ -260,6 +291,7 @@ namespace mqtt5nano {
             return false;
         }
 
+        // toLong returns the slice parsed as base 10.
         long toLong() {
             long val = 0;
             for (int i = start; i < end; i++) {
@@ -268,57 +300,62 @@ namespace mqtt5nano {
             return val;
         }
 
-        slice b64Decode(sink *buffer);
+        // b64Decode decodes the base64 encoded slice into the buffer.
+        slice b64Decode(ByteCollector *buffer);
 
-        slice b64Encode(sink *buffer);
+        // b64Encode encodes the slice into the buffer.
+        slice b64Encode(ByteCollector *buffer);
 
         // copy out the slice into the buffer.
         char *copy(char *buffer, int max);
 
-        // Copy out the slice into the array.
+        // Copy out the slice into the array. Null terminate it.
         char *getCstr(char *buffer, int max);
 
         // copy the slice into the array while expanding into hex.
         char *gethexstr(char *buffer, int max);
 
-        // genarate hex from the slice into the sink.
-        void gethexstr(sink dest);
+        // genarate hex from the slice into the ByteCollector.
+        void gethexstr(ByteCollector dest);
 
     }; // slice
 
-    // sink is like a slice except that we can write to it.
+    // ByteCollector is like a slice except that we can write to it.
     // All the write or put functions you might expect in slice are in here.
     // We write at the start and then increment start until start
     // gets to end and then we're full.
     // Note that start is past the bytes written
-    // and the bytes saves are between 0 and start
-    struct sink {
+    // and the bytes saved are between 0 and start
+    struct ByteCollector {
         char *base;
         unsigned short int start; // write position
         unsigned short int end;
 
-        sink() {
+        ByteCollector() {
             base = 0;
         }
-        sink(char *cP, int amt) {
+        ByteCollector(char *cP, int amt) {
             base = cP;
             start = 0;
             end = amt;
         }
-        // sink(slice s) // sorry, slice is read only
+
         int remaining() {
             return end - start;
         };
+
         int amount() // how much has been written
         {
             return start;
         };
+
         bool full() {
             if (start >= end || base == 0) {
                 return true;
             }
             return false;
         }
+
         // writeByte copies the char into the buffer and advances the start index. returns ok.
         bool writeByte(char c) {
             bool ok = true;
@@ -329,6 +366,7 @@ namespace mqtt5nano {
             }
             return false; // not ok
         }
+
         // writeBytes calls writeByte returns ok
         bool writeBytes(const char *cP, int amt) { // we could just construct a slice and call write. todo
             bool ok = true;
@@ -339,6 +377,7 @@ namespace mqtt5nano {
             }
             return true; // ok
         }
+
         // returns ok
         bool write(slice s) {
             bool ok = true;
@@ -350,9 +389,11 @@ namespace mqtt5nano {
             }
             return ok;
         };
-        bool write(sink s) {
+
+        bool write(ByteCollector s) {
             return write(slice(s));
         };
+
         bool writeFixedLenStr(slice s) {
             bool ok = true;
             int len = s.size();
@@ -368,6 +409,7 @@ namespace mqtt5nano {
             end += len;
             return ok;
         }
+
         // the int needs to be less than 2^21
         // mqtt needs litle endian.
         bool writeBigEndianVarLenInt(int val) {
@@ -381,6 +423,7 @@ namespace mqtt5nano {
             ok &= writeByte(val & 0x7F);
             return ok;
         }
+
         bool writeLittleEndianVarLenInt(int val) {
             while (true) {
                 if (val < 128) {
@@ -393,6 +436,7 @@ namespace mqtt5nano {
             }
             return !full();
         }
+
         // getWritten return the slice BEFORE the start.  It's what's *been* written.
         slice getWritten() {
             slice s;
@@ -406,17 +450,16 @@ namespace mqtt5nano {
         }
     };
 
-    // drain can act as a place to send a stream of bytes.
-    // It's a lot like a sink except the desination is virtual and not just a buffer.
-    // in Arduino it's a Stream. There is a StreamDrain.
-    // Like a network connection.
-    // Return true when things are failed.
-    // There is an implementation where the drain is a sink. SinkDrain exists. and CoutDrain
-    // there's  NetDrain in tests.
-    struct drain {
+    // Destination can act as a place to send a stream of bytes.
+    // It's a lot like a ByteCollector except the desination is virtual and not just a buffer.
+    // in Arduino it's a Stream. There is a StreamDestination class for that.
+    // Return false when things are failed. Typically because an underlaying buffer is full or a connection is lost.
+    // There is an implementation where the Destination is a ByteCollector 'ByteDestination'.
+
+    struct Destination {
         virtual bool writeByte(char c) = 0; // returns ok
 
-        // write the bytes of s down the drain. returns ok
+        // write the bytes of s to the destination. returns ok
         bool write(slice s) {
             if (s.empty()) { // in case the buffer is nullptr
                 return true;
@@ -445,11 +488,38 @@ namespace mqtt5nano {
             bool ok = true;
             return ok;
         }
-        // // This will be used in the case where the argument is F("....")
-        // void print(const __FlashStringHelper *text) {
-        //     char* buffer[17];
-        //     strncpy_P(buffer, (const char*)text, 16);  // _P is the version to read from program space
-        // }
+        
+        bool println(const char *cP) // c string
+        {
+            print(cP);
+            return print("\n");;
+        }
+        
+        bool print(slice s) {
+            return write(s);
+        }
+        bool print(slice s, slice s2) {
+            write(s);
+            return write(s2);
+        }
+        bool print(slice s, slice s2, slice s3) {
+            write(s);
+            write(s2);
+            return write(s3);
+        }
+        bool print(slice s, slice s2, slice s3, slice s4) {
+            write(s);
+            write(s2);
+            write(s3);
+            return write(s4);
+        }
+        bool print(slice s, slice s2, slice s3, slice s4, slice s5) {
+            write(s);
+            write(s2);
+            write(s3);
+            write(s4);
+            return write(s5);
+        }
 
         bool print(int n) // c string
         {
@@ -530,11 +600,11 @@ namespace mqtt5nano {
         }
     };
 
-    struct SinkDrain : drain // for those that output to a buffer
+    struct ByteDestination : Destination // for those that output to a buffer
     {
-        sink buffer;
-        SinkDrain() {}
-        SinkDrain(char *cP, int len) {
+        ByteCollector buffer;
+        ByteDestination() {}
+        ByteDestination(char *cP, int len) {
             buffer.base = cP;
             buffer.start = 0;
             buffer.end = len - 1;
@@ -552,9 +622,9 @@ namespace mqtt5nano {
         }
     };
 
-    struct VoidDrain : drain // for those that output to space
+    struct VoidDestination : Destination // for those that output to space
     {
-        VoidDrain() {}
+        VoidDestination() {}
         int count = 0;
         bool writeByte(char c) override {
             count++;

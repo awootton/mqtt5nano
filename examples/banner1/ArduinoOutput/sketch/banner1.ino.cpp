@@ -52,9 +52,9 @@ struct setBanner : Command {
         description = "change the banner";
         argumentCount = 1;
     }
-    void execute(Args args, badjson::Segment *params, drain &out) override {
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
 
-        SinkDrain msg(curMessage, BUF_SIZE);
+        ByteDestination msg(curMessage, BUF_SIZE);
 
         if (args[0].empty()) {
             // static const char PROG MEM tmp[] = "ERROR expected a value";
@@ -78,7 +78,7 @@ struct getBanner : Command {
         // static const char PROGMEM tmp2[] = " the banner text";
         description = " the banner text";
     }
-    void execute(Args args, badjson::Segment *params, drain &out) override {
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
         out.write(curMessage);
     }
 };
@@ -95,7 +95,7 @@ void setup() {
     Serial.begin(115200);
     delay(100);
     one.setup(Serial);
-    SinkDrain tmp(curMessage, sizeof(curMessage));
+    ByteDestination tmp(curMessage, sizeof(curMessage));
     bannerStash.read(tmp);
 
     P.begin();

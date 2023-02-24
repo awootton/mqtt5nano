@@ -49,7 +49,7 @@ namespace mqtt5nano {
 
             // serial only
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
                 if ( args.count() == 0 ){
                     out.write("arg expected");
                     return;

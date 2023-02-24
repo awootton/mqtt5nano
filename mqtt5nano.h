@@ -14,8 +14,8 @@ extern void delay(int);
  *
  */
 
-#include "nanoCommon.h"
 #include "mockStream.h" // this does nothing on Arduino. A stub.
+#include "nanoCommon.h"
 
 // this is the mqtt5 parser and generator.
 #include "mqtt5nanoParse.h"
@@ -32,10 +32,9 @@ extern void delay(int);
 #include "streamReader.h"
 #include "wiFiCommands.h"
 
-
 namespace mqtt5nano {
 
-   // extern class Stream *globalSerial;
+    // extern class Stream *globalSerial;
 
     extern EepromItem *eehead;
 
@@ -52,10 +51,16 @@ namespace mqtt5nano {
         getVersion version;
         getUnixTimeCmd gettime;
 
+        void setMillisFunction(int (*anotherGetMillis)()) { // optional
+            getMillis = anotherGetMillis;
+        }
+
         void setup(class Stream &serial) {
-            globalSerial = &serial;
-            serial.println("# hello nano package one");
-            serial.println("# type 'help'");
+            globalSerial = &serial;              // deprecate
+            serialDestination.setStream(serial); // use serialDestination.
+
+            serialDestination.println("# hello nano package one");
+            serialDestination.println("# type 'help'");
 
             moreScrambled(WiFi.macAddress().c_str());
             moreScrambled(54321);
@@ -90,24 +95,55 @@ namespace mqtt5nano {
         }
 
         void loop(long now, class Stream &serial) {
-            globalSerial = &serial;
+            globalSerial = &serial;              // deprecate
+            serialDestination.setStream(serial); // use serialDestination.
+
             latestNowMillis = now;
 
-            // serial.println("serialCommandHandler");
             serialCommandHandler.loop(now, serial);
 
-            // serial.println("wifi.loop");
+            // int newtime = getMillis();
+            // if (newtime - latestNowMillis > 1000) {
+            //     serialDestination.print("# serialCommandHandler is slow ");
+            // }
+            // latestNowMillis = newtime;
+
             wifi.loop(now, serial);
 
-            // serial.println("www.loop");
-            www.loop(now, serial);
+            // newtime = getMillis();
+            // if (newtime - latestNowMillis > 1000) {
+            //     serialDestination.print("# wifi.loop is slow ");
+            // }
+            // latestNowMillis = newtime;
 
-            // serial.println("mqttClient.loop");
+ // FIXME: someday get local mode to play nice with the mqtt tcp sockets and esp32
+            #ifndef ESP32
+            www.loop(now, serial);
+            #endif
+
+            // newtime = getMillis();
+            // if (newtime - latestNowMillis > 1000) {
+            //     serialDestination.print("# www.loop is slow ");
+            // }
+            // latestNowMillis = newtime;
+
             mqttClient.loop(now, serial);
 
-            // serial.println("TimedItem::LoopAll");
+            // newtime = getMillis();
+            // if (newtime - latestNowMillis > 1000) {
+            //     serialDestination.print("# mqttClient.loop is slow ");
+            // }
+            // now = latestNowMillis = newtime;
+
             TimedItem::LoopAll((unsigned long)now);
-            delay(1);
+
+            // newtime = getMillis();
+            // if (newtime - latestNowMillis > 1000) {
+            //     serialDestination.print("# LoopAll is slow ");
+            // }
+            // now = latestNowMillis = newtime;
+
+            delay(1); // save power
         }
     };
 }

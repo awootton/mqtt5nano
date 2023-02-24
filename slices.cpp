@@ -6,7 +6,7 @@ namespace mqtt5nano {
 
     const char *slice::emptyStr = "";
 
-    slice::slice(sink s) {
+    slice::slice(ByteCollector s) {
         base = s.base;
         start = 0;
         end = s.start;
@@ -23,7 +23,7 @@ namespace mqtt5nano {
         return &buffer[0];
     };
 
-    void slice::gethexstr(sink dest) {
+    void slice::gethexstr(ByteCollector dest) {
         if (empty()) {
             return;
         }
@@ -62,9 +62,9 @@ namespace mqtt5nano {
         return &buffer[0];
     }
 
-    slice slice::b64Decode(sink *buffer) {
+    slice slice::b64Decode(ByteCollector *buffer) {
         slice s = *this;
-        sink d = *buffer;
+        ByteCollector d = *buffer;
         int amt = base64::decode(s.base + s.start, s.size(), d.base + d.start, d.remaining());
         slice result(d.base + d.start, d.start, d.start + amt);
         if (buffer->start + amt > buffer->end) {
@@ -75,9 +75,9 @@ namespace mqtt5nano {
         return result;
     }
 
-    slice slice::b64Encode(sink *buffer) {
+    slice slice::b64Encode(ByteCollector *buffer) {
         slice s = *this;
-        sink d = *buffer;
+        ByteCollector d = *buffer;
         int amt = base64::encode(s.base + s.start, s.size(), d.base + d.start, d.remaining());
         slice result(d.base + d.start, d.start, d.start + amt);
         if (buffer->start + amt > buffer->end) {

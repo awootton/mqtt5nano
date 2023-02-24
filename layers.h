@@ -1,5 +1,4 @@
 
-
 #pragma once
 
 #include "commandLine.h"
@@ -10,14 +9,17 @@
 #include "slices.h"
 
 #include "commonCommands.h"
+#include "mqtt5nanoParse.h"
 #include "nanoCommon.h"
 #include "nanoCrypto.h"
+#include "streamReader.h"
 
 // Pipeline is a series of routines to process a command.
 // It is upside down from the pipeline in knotfree-net-homepage Pipeline.tsx
 
 namespace mqtt5nano {
 
+    // this is a return pipeline that returns http and/or mqtt with the result of a command.
     struct CommandPipeline : ParsedHttp {
 
         bool fromHttp = false; // the same as local?
@@ -33,20 +35,23 @@ namespace mqtt5nano {
         const int BufferLen = 2048;
         char *cmdreplybuffer = new char[BufferLen];
         char *cmdoutbuffer = new char[BufferLen];
-        char *b64DecodeBuffer = new char[BufferLen];
+        char *b64DecodeBytes = new char[BufferLen];
 
-        SinkDrain response; // the total response
+        ByteDestination response;        // the total response
+        ByteDestination commandOut;      // just the output of the command.
+        ByteDestination b64DecodeBuffer; // someplace to put the base64 decode.
 
-        SinkDrain commandOut; // just the output of the command.
-        int commandOutLen = 0;
-
-        SinkDrain b64DecodeSink;
+        mqttPacketPieces *parser; // set by caller
 
         const char *errorString = nullptr;
 
+        char adminpubkey[32];
+        char privkey[32];
+        char nonce[24];
+
         CommandPipeline() : response(cmdreplybuffer, BufferLen),
                             commandOut(cmdoutbuffer, BufferLen),
-                            b64DecodeSink(b64DecodeBuffer, BufferLen) {
+                            b64DecodeBuffer(b64DecodeBytes, BufferLen) {
         }
 
         ~CommandPipeline() {
@@ -59,49 +64,21 @@ namespace mqtt5nano {
                 delete[] cmdoutbuffer;
                 cmdoutbuffer = nullptr;
             }
-            if (b64DecodeBuffer != nullptr) {
-                delete[] b64DecodeBuffer;
-                b64DecodeBuffer = nullptr;
+            if (b64DecodeBytes != nullptr) {
+                delete[] b64DecodeBytes;
+                b64DecodeBytes = nullptr;
             }
         }
 
         slice b64Decode(slice s) {
-            slice result = s.b64Decode(&b64DecodeSink.buffer);
+            slice result = s.b64Decode(&b64DecodeBuffer.buffer);
             return result;
         }
 
-        void handlePayload(slice payload, drain & socket) {
+        // handlePayload does the whole job. TODO: break into parts.
+        void handlePayload(slice payload, Destination &socket) {
 
-            SinkDrain& part1 = handlePayloadPart1( payload);
-
-            if (wasHttp && ! isMqtt) {
-                // make it into a http reply
-                makeHttpReply(socket);
-                //slice r ;//= response.buffer.slice();
-               // socket.write(r) ;
-            } 
-            
-            if (isMqtt) {
-                // make it into a mqtt reply
-                //slice r ;//= response.buffer.slice();
-               // return commandOut;
-            } else {
-              // socket.write(commandOut.buffer.slice());
-            }
-            // if ( wasHttp){
-
-            //     // make http results
-
-            // } else {
-            //     // if it was mqtt then make the pub and stuff it in the socket
-
-            // }
-            
-
-        }
-
-        SinkDrain& handlePayloadPart1(slice payload) {
-            globalSerial->println("have payload");
+            // serialDestination.println("have payload");
             wasHttp = convert(payload);
             if (wasHttp) {
                 isHttP = true;
@@ -117,10 +94,9 @@ namespace mqtt5nano {
                     if (chopped.error != nullptr) {
                         // return a message ??
                         errorString = "ERROR payload chop";
-                        globalSerial->print(errorString);
-                        globalSerial->println(chopped.error);
+                        serialDestination.print(errorString);
+                        serialDestination.println(chopped.error);
                         commandOut.print(chopped.error);
-                        return commandOut;
                     }
                     linkToTail(*chopped.segment); // httpprops will free the segments now
                     linkFrontToCommand();
@@ -138,7 +114,7 @@ namespace mqtt5nano {
                 source = CommandSource::Local;
             } else {
                 errorString = "ERROR unknown source";
-                globalSerial->println(errorString);
+                serialDestination.println(errorString);
                 source = unknown;
             }
 
@@ -146,85 +122,58 @@ namespace mqtt5nano {
             slice nonc = findParam("nonc");
             slice admn = findParam("admn");
 
-            globalSerial->print("command is ");
-            globalSerial->println(command->input.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
+            // serialDestination.print("command is ",command->input,"\n");
 
             bool isb64 = command->input.startsWith("=");
             if (isb64) {
-                // decode into b64DecodeSink
-                command->input.start++;
-
-                // globalSerial->print("command is ");
-                // globalSerial->println(command->input.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
-
+                // decode into b64DecodeBuffer
+                command->input.start++;// skip the =
                 command->input = b64Decode(command->input);
-
-                // globalSerial->print("command is ");
-                // globalSerial->println(command->input.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
             }
 
-            unsigned char adminpubkey[32];
-            unsigned char pubkey[32];
-            unsigned char privkey[32];
-            unsigned char nonce[24];
-
             if (nonc.size() > 0 && admn.size() > 0) {
-                // decrypt
                 wasEncrypted = true;
-                globalSerial->println("decrypting");
+                // serialDestination.println("decrypting");
 
-                slice adminPublicKey64 = adminPublicKeyStash.readSlice(b64DecodeSink);
-                b64DecodeSink.buffer.start += adminPublicKey64.size();
-                slice devicePrivateKey64 = devicePrivateKeyStash.readSlice(b64DecodeSink);
-                b64DecodeSink.buffer.start += devicePrivateKey64.size();
-                slice devicePublicKey64 = devicePublicKeyStash.readSlice(b64DecodeSink);
-                b64DecodeSink.buffer.start += devicePrivateKey64.size();
+                slice adminPublicKey64 = adminPublicKeyStash.readSlice(b64DecodeBuffer);
+                b64DecodeBuffer.buffer.start += adminPublicKey64.size();
+                slice devicePrivateKey64 = devicePrivateKeyStash.readSlice(b64DecodeBuffer);
+                b64DecodeBuffer.buffer.start += devicePrivateKey64.size();
+                slice devicePublicKey64 = devicePublicKeyStash.readSlice(b64DecodeBuffer);
+                b64DecodeBuffer.buffer.start += devicePrivateKey64.size();
 
-                globalSerial->print("nonc is ");
-                globalSerial->println(nonc.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
-
-                globalSerial->print("admn is ");
-                globalSerial->println(admn.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
-
-                globalSerial->print("adminPublicKey64 is ");
-                globalSerial->println(adminPublicKey64.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
-
-                globalSerial->print("devicePrivateKey64 is ");
-                globalSerial->println(devicePrivateKey64.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
-
+                if(0){
+                serialDestination.print("nonc is ", nonc, "\n");
+                serialDestination.print("admn is ", admn, "\n");
+                serialDestination.print("adminPublicKey64 is ", adminPublicKey64, "\n");
+                serialDestination.print("devicePrivateKey64 is ", devicePrivateKey64, "\n");
+                }
                 if (!adminPublicKey64.startsWith(admn)) {
                     errorString = "ERROR admn mismatch";
-                    globalSerial->println(errorString);
-                    // response.print(errorString);
-                    // return response;
+                    serialDestination.println(errorString);
                 }
 
                 nonc.copy((char *)nonce, 24);
-                sink dtmp = sink((char *)adminpubkey, 32);
+                ByteCollector dtmp = ByteCollector((char *)adminpubkey, 32);
                 adminPublicKey64.b64Decode(&dtmp);
-                sink dtmp2 = sink((char *)privkey, 32);
+                ByteCollector dtmp2 = ByteCollector((char *)privkey, 32);
                 devicePrivateKey64.b64Decode(&dtmp2);
-                sink dtmp3 = sink((char *)pubkey, 32);
-                devicePublicKey64.b64Decode(&dtmp2);
 
-                int decryptedStart = b64DecodeSink.buffer.start;
-                sink *dP = &(b64DecodeSink.buffer);
-                bool ok = nanocrypto::unbox(dP, command->input, (char *)nonce, (char *)adminpubkey, (char *)privkey);
+                int decryptedStart = b64DecodeBuffer.buffer.start;
+                ByteCollector *dP = &(b64DecodeBuffer.buffer);
+                bool ok = nanocrypto::unbox(dP, command->input, nonce, adminpubkey, privkey);
                 if (!ok) {
                     errorString = "ERROR crypto::unbox";
-                    globalSerial->println("ERROR crypto::unbox");
-                    // response.print(errorString);
-                    // return response;
+                    serialDestination.println(errorString);
                 }
-                command->input = slice(b64DecodeSink.buffer.base, decryptedStart, b64DecodeSink.buffer.start);
+                command->input = slice(b64DecodeBuffer.buffer.base, decryptedStart, b64DecodeBuffer.buffer.start);
 
-                globalSerial->print("command is "); // ie version#1676856950
-                globalSerial->println(command->input.getCstr(b64DecodeSink.buffer.base + b64DecodeSink.buffer.start, b64DecodeSink.buffer.remaining()));
+                // serialDestination.print("clear command is ", command->input, "\n"); // ie version#1676856950
 
                 int index = command->input.indexOf('#');
                 if (index == -1) {
                     errorString = "ERROR no #";
-                    globalSerial->println(errorString);
+                    serialDestination.println(errorString);
                 }
 
                 // now split on #
@@ -241,42 +190,65 @@ namespace mqtt5nano {
                 }
                 if (delta > 30) {
                     errorString = "ERROR time delta";
-                    globalSerial->println(errorString);
+                    serialDestination.print(errorString);
+                    serialDestination.writeInt(delta);
+                    serialDestination.print("\n");
                 }
 
-                { // re parse with badjson
+                { // re parse with badjson, from the b64DecodeBuffer
                     // chop up the payload as text
-                    badjson::ResultsTriplette chopped = badjson::Chop(newCommand.base + newCommand.start, newCommand.size());
-                    if (chopped.error != nullptr) {
-                        // return a message ??
-                        errorString = "ERROR payload chop2";
-                        globalSerial->print(errorString);
-                        globalSerial->println(chopped.error);
 
-                        delete chopped.segment;
+                    // first remove the '/'
+                    int start = b64DecodeBuffer.buffer.start;
+                    b64DecodeBuffer.write(newCommand); // copy the newCommand into the buffer
+                    for (int i = start; i < b64DecodeBuffer.buffer.start; i++) {
+                        if (b64DecodeBuffer.buffer.base[i] == '/') {
+                            b64DecodeBuffer.buffer.base[i] = ' ';
+                        }
                     }
+                    newCommand = slice(b64DecodeBuffer.buffer.base, start, b64DecodeBuffer.buffer.start); // make a new slice
+                    // serialDestination.print("pre chopped command is ", newCommand, "\n");
+
                     if (command != nullptr) {
                         delete command;
                         command = nullptr;
                     }
+                    badjson::ResultsTriplette chopped = badjson::Chop(newCommand.base + newCommand.start, newCommand.size());
+                    if (chopped.error != nullptr) {
+                        // return a message ??
+                        errorString = "ERROR payload chop2";
+                        serialDestination.print(errorString, chopped.error, "\n");
+                    }
+
                     command = chopped.segment;
                 }
+            } else {
+                // serialDestination.println("NOT decrypting");
             }
-            SinkDrain commandDrain = commandOut; // we output the command to the commandOut buffer
-            if (wasEncrypted) {                  // unless it's going to me encrypted then we output to the response buffer instead and then encrypt it to commandOut
-                commandDrain = response;
-            }
-            slice processedCommand = commandDrain.buffer;
 
-            processedCommand.start = commandDrain.buffer.start;
-            Command::process(command, params, commandDrain, source);
+            serialDestination.println("The executing command is: ");
+            badjson::ToString(*command, serialDestination);serialDestination.println("\n");
+
+            ByteDestination *commandDrain = &commandOut; // we output the command to the commandOut buffer
+            if (wasEncrypted) {            
+                response.reset();              // unless it's going to me encrypted then we output to the response buffer instead and then encrypt it to commandOut
+                commandDrain = &response;
+            }
+            commandDrain->buffer.start = 0;
+            slice processedCommand = commandDrain->buffer;
+
+            processedCommand.start = commandDrain->buffer.start;
+            Command::process(command, params, *commandDrain, source, wasEncrypted);
+            if ( command->input.equals("favicon.ico") ) {
+                isPng = true;// a hack
+            }
             if (wasEncrypted) {
-                commandDrain.write("#");
-                commandDrain.writeInt(getUnixTime());
+                commandDrain->write("#");
+                commandDrain->writeInt(getUnixTime());
             }
-            processedCommand.end = commandDrain.buffer.start;
+            processedCommand.end = commandDrain->buffer.start;
 
-        bottom:
+            // serialDestination.print("processed command is: ", processedCommand, "\n");
 
             // if it was encrypted then now it needs to be encrypted again.
             if (wasEncrypted) {
@@ -285,63 +257,123 @@ namespace mqtt5nano {
                     ourCommandResult = slice(errorString);
                 }
 
-                sink *dP = &(commandOut.buffer);
-                bool ok = nanocrypto::box(dP, ourCommandResult, (char *)nonce, (char *)adminpubkey, (char *)privkey);
+                commandOut.buffer.reset();
+                b64DecodeBuffer.buffer.reset();
+                // encrypt from response to b64DecodeBuffer
+                ByteCollector *dP = &(b64DecodeBuffer.buffer);
+                bool ok = nanocrypto::box(dP, ourCommandResult, nonce, adminpubkey, privkey);
                 if (!ok) {
                     errorString = "ERROR crypto::box";
-                    globalSerial->println("ERROR crypto::box");
+                    serialDestination.println("ERROR crypto::box");
                     commandOut.print(errorString);
                 }
+                // now b64 from b64DecodeBuffer to commandOut
+                commandOut.print("=");
+                slice boxbinary(b64DecodeBuffer.buffer);
+                boxbinary.b64Encode(&commandOut.buffer);
+
+            }
+            // serialDestination.print("now commandOut is: ", commandOut.buffer, "\n");
+
+            // serialDestination.print(slice("part2 command is: "), slice(commandOut.buffer), "\n");
+
+            if (wasHttp && !isMqtt) {
+                // make it into a http reply
+                if(1){
+                    response.reset();
+                    makeHttpReply(commandOut, response);
+                    serialDestination.print("http http reply payload\n", response.buffer, "\n");
+                }
+                makeHttpReply(commandOut, socket); // doesn't use response
+
+            } else if (wasHttp) {
+                // http over mqtt
+                response.reset();
+                makeHttpReply(commandOut, response);
+                // serialDestination.print("mqtt http reply payload\n", response.buffer, "\n");
+                makeMqttReply(response, socket); // uses base64ByteDestination as temp.
+
+                // serialDestination.print("mqtt done with socket", "\n");
+
+            } else {
+                // just mqtt
+                makeMqttReply(commandOut, socket); // uses base64ByteDestination as temp.
             }
 
-            // if (wasHttp) {
-            //     // make it into a http reply
-            //     makeHttpReply();
-            //     return response;
-            // } else {
-            //     return commandOut;
-            // }
-
-            return commandOut;
+            // serialDestination.println("layers returning now");
         }
 
-        void makeHttpReply( drain & destination) {
+        bool makeHttpReply(ByteDestination src, Destination &dest) {
 
 // fixme: make F work here
 #if not defined(Arduino)
-    #define F(a) a
+#define F(a) a
 #endif
-            commandOutLen = commandOut.buffer.start;
+            int commandOutLen = src.buffer.start;
 
-            destination.print(F("HTTP/1.1 200 OK\r\n"));
-            destination.print(F("Content-Length: "));
+            dest.print(F("HTTP/1.1 200 OK\r\n"));
+            dest.print(F("Content-Length: "));
 
-            destination.print(commandOutLen);
-            destination.print(F("\r\n"));
-            // we have to return the params as headers
-            badjson::Segment *pP = params;
-            while (pP != nullptr) {
-                destination.write(pP->input);
-                destination.print(": ");
-                pP = pP->next;
-                if (pP != nullptr) {
-                    destination.write(pP->input);
-                    pP = pP->next;
-                }
-                response.print(F("\r\n"));
-            }
+            dest.print(commandOutLen);
+            dest.print(F("\r\n"));
             if (isPng) { // hack alert
-                destination.print(F("Content-Type: image/png\r\n"));
+                dest.print(F("Content-Type: image/png\r\n"));
             } else {
-                destination.print(F("Content-Type: text/plain\r\n"));
+                dest.print(F("Content-Type: text/plain\r\n"));
             }
-            destination.print(F("Access-Control-Allow-Origin: *\r\n"));
-            destination.print(F("Access-control-expose-headers: nonc\r\n"));
-            destination.print(F("Connection: Closed\r\n"));
-            destination.print(F("\r\n"));
+            dest.print(F("Access-Control-Allow-Origin: *\r\n"));
+            dest.print(F("Access-control-expose-headers: nonc\r\n"));
+            dest.print(F("Connection: Closed\r\n"));
+            dest.print(F("\r\n"));
             for (int i = 0; i < commandOutLen; i++) {
-                destination.writeByte(commandOut.buffer.base[i]);
+                dest.writeByte(src.buffer.base[i]);
             }
+            return true; // ok
+        }
+
+        bool makeMqttReply(ByteDestination src, Destination &dest) {
+
+            mqttPacketPieces pubgen;
+
+            pubgen.QoS = 1;
+            pubgen.packetType = CtrlPublish;
+
+            pubgen.TopicName = parser->RespTopic;
+            pubgen.PacketID = 3;
+            pubgen.RespTopic = parser->TopicName;
+
+            pubgen.Payload = slice(src.buffer.base, 0, src.buffer.start);
+
+            // copy the user props, from the pipeline. Mostly to pick up the nonc 
+            badjson::Segment *pP = params;
+            int i = 0;
+            while (pP != nullptr) {
+                pubgen.UserKeyVal[i++] = pP->input;
+                if (i >= pubgen.userKeyValLen) {
+                    break;
+                }
+                pP = pP->next;
+            }
+            
+            if(0){// print them out for debug
+                for (int i = 0; i < pubgen.userKeyValLen; i++) {
+                    if ( pubgen.UserKeyVal[i].empty() ) {
+                       break;
+                    }
+                    serialDestination.print("UserKeyVal: ", pubgen.UserKeyVal[i], "\n");
+                }
+            }
+            
+            b64DecodeBuffer.reset();
+            ByteCollector assemblyArea = b64DecodeBuffer.buffer;  
+
+            bool ok = pubgen.outputPubOrSub(assemblyArea, &dest);
+
+            if (!ok) {
+                serialDestination.println("ERROR pubgen not ok");
+                return ok;
+            }
+            return ok;
         }
     };
 

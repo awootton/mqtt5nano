@@ -42,9 +42,9 @@ namespace mqtt5nano {
         bool parseSubAck(slice body, unsigned char packetType, int len);
 
         // uses outputBuffer for assembly and then writes it to destination.
-        bool outputPubOrSub(sink assemblyBuffer, drain *destination);
+        bool outputPubOrSub(ByteCollector assemblyBuffer, Destination *destination);
 
-        bool outputConnect(sink assemblyBuffer, drain *destination,
+        bool outputConnect(ByteCollector assemblyBuffer, Destination *destination,
                            slice clientID, slice user, slice pass);
 
         // return a value if key found else return a '' slice.
@@ -74,8 +74,8 @@ namespace mqtt5nano {
             return s;
         }
 
-        sink getSink() {
-            sink s;
+        ByteCollector getSink() {
+            ByteCollector s;
             s.base = buffer;
             s.start = 0;
             s.end = size;

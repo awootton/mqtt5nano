@@ -15,8 +15,6 @@ namespace mqtt5nano {
 
     mqttStatus mqttStatusCmdInstance;
 
-    
-    
     void setAdminPassword(slice arg) {
         char adminPublicKey[32];
         char adminPrivateKey[32];
@@ -49,7 +47,6 @@ namespace mqtt5nano {
         adminPublicKeyStash.write(slice(tmp, 0, len));
     }
 
-
     void setDevicePassword(slice arg) {
         char thingPublicKey[32];
         char thingPrivateKey[32];
@@ -78,12 +75,15 @@ namespace mqtt5nano {
         globalSerial->print(0xFF & (unsigned int)thingPrivateKey[3]);
         globalSerial->println();
 
-
         int len = base64::encode(thingPublicKey, 32, tmp, sizeof(tmp));
         devicePublicKeyStash.write(slice(tmp, 0, len));
 
         len = base64::encode(thingPrivateKey, 32, tmp, sizeof(tmp));
         devicePrivateKeyStash.write(slice(tmp, 0, len));
+    }
+
+    void setShortName(const char *name) {
+        hostStash.write(name);
     }
 
 }

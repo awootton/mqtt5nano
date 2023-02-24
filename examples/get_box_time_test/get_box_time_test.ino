@@ -9,9 +9,9 @@ mqtt5nano::PackageOne one;
 struct getBoxtime : Command {
     void init() override {
         name = "get box time";
-        description = "how many ms to box a message";
+        description = "how many ms to box a message🔓";
     }
-    void execute(Args args, badjson::Segment *params, drain &out) override {
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
 
         int startTime = millis();
 
@@ -40,7 +40,7 @@ struct getBoxtime : Command {
         }
 
         char destination[64]; // > 12 + 16
-        sink encoded(destination, 64);
+        ByteCollector encoded(destination, 64);
 
         bool ok = nanocrypto::box(&encoded, message, nonce, thingPublicKey, adminPrivateKey);
         if (!ok) {
@@ -63,6 +63,10 @@ struct getBoxtime : Command {
 
 getBoxtime gbt;
 
+int betterMillis() {
+    return (int)millis();
+}
+
 void setup() {
     Serial.begin(115200);
     delay(100);
@@ -70,5 +74,8 @@ void setup() {
 }
 
 void loop() {
+    
+    one.setMillisFunction(betterMillis);
+ 
     one.loop(millis(), Serial);
 }

@@ -36,9 +36,9 @@ using namespace badjson;
 
 char buffer[4 * 1024];
 char buffer2[4 * 1024];
-//sink dest = sink(buffer, sizeof(buffer));
+//ByteCollector dest = ByteCollector(buffer, sizeof(buffer));
 
-SinkDrain dest(buffer2,sizeof(buffer));
+ByteDestination dest(buffer2,sizeof(buffer));
 
 void test1(string input, string want); // below
 

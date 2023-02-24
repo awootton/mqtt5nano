@@ -29,7 +29,7 @@
 using namespace std;
 using namespace badjson;
 
-struct CoutDrain : drain // for the examples output to cout
+struct CoutDrain : Destination // for the examples output to cout
 {
     bool writeByte(char c) override {
         cout << c;
@@ -41,7 +41,7 @@ CoutDrain my_cout_drain;
 
 char testbuffer[4096];
 
-SinkDrain test_buffer_drain(testbuffer, sizeof(testbuffer));
+ByteDestination test_buffer_drain(testbuffer, sizeof(testbuffer));
 
 // in real life we output to Serial or tcp or mqtt.
 
@@ -51,7 +51,7 @@ public:
         name = "get test1";
         description = "output hello test1";
     }
-    void execute(Args args, badjson::Segment *params, drain &out) override {
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
         out.write("hello test1");
     }
 };
@@ -97,7 +97,7 @@ int main() {
         parsed.convert(sample);
         cout << "got http" << ok << "\n";
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
 
         badjson::ToString(*parsed.command, dest);
         dest.writeByte(0);
@@ -142,7 +142,7 @@ int main() {
     {
 
         char *buffer = new char[4096];
-        SinkDrain response(buffer, 4096);
+        ByteDestination response(buffer, 4096);
 
         // process(parsed.command,parsed.params,response);
 
@@ -158,7 +158,7 @@ int main() {
         static const int buffSize = 1024; // should be enough.?
         WiFiClient clients[maxClients];
         char buffers[maxClients][buffSize];
-        sink sinks[maxClients];
+        ByteCollector sinks[maxClients];
         {
             for (int i = 0; i < maxClients; i++) {
                 sinks[i].base = buffers[i];
@@ -185,7 +185,7 @@ int main() {
         // char *intStr = itoa(1234);
         std::string s = std::to_string(1234);
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
         dest.writeInt(123);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
@@ -203,7 +203,7 @@ int main() {
         parsed.convert(sample);
         cout << "got http" << ok << "\n";
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
 
         badjson::ToString(*parsed.command, dest);
         dest.writeByte(0);
@@ -227,7 +227,7 @@ int main() {
         parsed.convert(sample);
         cout << "got http" << ok << "\n";
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
 
         badjson::ToString(*parsed.command, dest);
         dest.writeByte(0);
@@ -251,7 +251,7 @@ int main() {
         parsed.convert(sample);
         cout << "got http" << ok << "\n";
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
 
         badjson::ToString(*parsed.command, dest);
         dest.writeByte(0);
@@ -275,7 +275,7 @@ int main() {
         parsed.convert(sample);
         cout << "got http" << ok << "\n";
 
-        SinkDrain dest(testbuffer, sizeof(testbuffer));
+        ByteDestination dest(testbuffer, sizeof(testbuffer));
 
         badjson::ToString(*parsed.command, dest);
         dest.writeByte(0);

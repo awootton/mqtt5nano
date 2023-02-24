@@ -15,6 +15,8 @@ namespace mqtt5nano {
     extern long long millisUnixAdjust;
 
     extern int getUnixTime();
+
+    extern int (*getMillis)();
 }
 
   

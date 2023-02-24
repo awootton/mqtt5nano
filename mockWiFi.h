@@ -143,7 +143,7 @@ struct mockWiFi {
 
 extern mockWiFi WiFi;
 
-struct CoutDrain2 : mqtt5nano::drain // for the examples output to cout
+struct CoutDrain2 : mqtt5nano::Destination // for the examples output to cout
 {
     bool writeByte(char c) override {
         std::cout << c;
@@ -167,10 +167,10 @@ struct mockWiFiClientBuffers : Stream {
     bool have = false;
 
     mqtt5nano::slice *source;
-    mqtt5nano::drain *output;
+    mqtt5nano::Destination *output;
 
     mqtt5nano::slice emptySlice;
-    mqtt5nano::VoidDrain emptyDrain;
+    mqtt5nano::VoidDestination emptyDrain;
 
     mockWiFiClientBuffers() {
         source = &emptySlice;

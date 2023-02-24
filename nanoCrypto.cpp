@@ -67,9 +67,9 @@ namespace nanocrypto {
 
     const static int Overhead = 16;
 
-    bool box(sink *adest, slice message, char nonce[24], char pubkey[32], char privkey[32]) {
+    bool box(ByteCollector *adest, slice message, char (&nonce)[24], char (&pubkey)[32], char (&privkey)[32]) {
         // how do we know dest is big enough?
-        // we don't. we'll transfer the bytes into in and it will protect it'self.
+        // we don't. we'll transfer the bytes into in and it will protect itself.
 
         // so here's the weird thing. It wants 32 zeroed bytes at the start of the message.
         // and the result has 16 zero bytes at the front of it, in addition to gaining a 16 byte overhead.
@@ -92,11 +92,10 @@ namespace nanocrypto {
         int len =
             crypto_box_curve25519xsalsa20poly1305(c, m, mlen, n, pk, sk);
 
-        for (int i = 0; i < 23 + 32 + 11; i++) {
-            // cout << c[i];
+        bool ok = adest->writeBytes(resultBuffer + 16, message.size() + Overhead);
+        if (!ok) {
+           len = -2;
         }
-
-        adest->writeBytes(resultBuffer + 16, message.size() + Overhead);
 
         delete[] resultBuffer;
         delete[] messageBuffer;
@@ -104,7 +103,7 @@ namespace nanocrypto {
         return len >= 0; // ok
     }
 
-    bool unbox(sink *adest, slice encrypted, char nonce[24], char pubkey[32], char privkey[32]) {
+    bool unbox(ByteCollector *adest, slice encrypted, char (&nonce)[24], char (&pubkey)[32], char (&privkey)[32]) {
         const int messageBuffSize = encrypted.size() + 32; // probably 16 too big
         char *messageBuffer = new char[messageBuffSize];
         memset(messageBuffer, 0, messageBuffSize);
@@ -123,7 +122,10 @@ namespace nanocrypto {
         int len =
             crypto_box_curve25519xsalsa20poly1305_open(c, m, mlen, n, pk, sk);
 
-        adest->writeBytes(resultBuffer + 32, encrypted.size() - Overhead);
+        bool ok = adest->writeBytes(resultBuffer + 32, encrypted.size() - Overhead);
+        if (!ok) {
+           len = -2;
+        }
 
         delete[] resultBuffer;
         delete[] messageBuffer;

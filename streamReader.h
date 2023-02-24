@@ -14,24 +14,11 @@ namespace mqtt5nano {
      * And then it parses the line into words and then passes it to the commands.
      */
 
-    struct StreamDrain : drain {
-        Stream *sP = nullptr;
-        StreamDrain(Stream &streams)
-            : sP(&streams) {
-        }
-        StreamDrain() {}
-
-        bool writeByte(char c) override {
-            int amt = sP->print(c);
-            bool ok = amt == 1;
-            return ok;
-        };
-    };
 
     struct streamReader {
-        sink ourBuffer;
+        ByteCollector ourBuffer;
         Stream *sP;
-        StreamDrain adrain;
+        StreamDestination adrain;
 
         static const int readBufferSize = 1024;
         char readbuffer[readBufferSize];
@@ -71,7 +58,9 @@ namespace mqtt5nano {
             // sP->println(cmd.base);
             badjson::ResultsTriplette chopped = badjson::Chop(cmd.base + cmd.start, cmd.size());
             if (chopped.error == nullptr) { // process command line
-                Command::process(chopped.segment, nullptr, adrain, CommandSource::SerialPort);
+                bool pretendEncrypted = true;
+                Command::process(chopped.segment, nullptr, adrain, CommandSource::SerialPort, pretendEncrypted);
+                adrain.print("\n");
             } else {
                 adrain.write(chopped.error);
                 adrain.write("\n");
@@ -80,9 +69,9 @@ namespace mqtt5nano {
         }
         void loop(long now, class Stream &s) {
             sP = &s;
-            adrain.sP = &s;
+            adrain.setStream(s);
             while (s.available()) {
-                // fixme call pipeline aka layers.
+                // fixme call pipeline aka layers?
                 char c = s.read();
                 ourBuffer.writeByte(c);
                 slice cmd = haveEnough();

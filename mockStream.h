@@ -3,7 +3,7 @@
 
 #if defined(ARDUINO)
 //  Nothing. Serial is always defined in arduino.
-// #include <Arduino.h>
+    #include <Arduino.h>
 #else
 
 extern void delay(int);
@@ -26,7 +26,6 @@ using namespace mqtt5nano;
 
 class Stream {
 public:
- 
     virtual size_t print(const char *dp) {
         cout << dp;
         return 1;
@@ -44,11 +43,11 @@ public:
         return 0;
     }
     virtual size_t print(int i) {
-        cout << i ;
+        cout << i;
         return 0;
     }
     virtual size_t print(unsigned int i) {
-        cout << i ;
+        cout << i;
         return 0;
     }
     virtual size_t print(char c) {
@@ -63,25 +62,24 @@ public:
     }
 };
 
-
-struct DrainStream : Stream {
+struct DestinationStream : Stream {
 
     int client_fd;
     char got;
     bool have = false;
 
     char outputbuffer[16000];
-    SinkDrain outdrain; // ((char *)outputbuffer,sizeof(outputbuffer));
+    ByteDestination outdrain; // ((char *)outputbuffer,sizeof(outputbuffer));
 
-    mqtt5nano::drain *output = &outdrain;//&my_cout_drain;
+    mqtt5nano::Destination *output = &outdrain; //&my_cout_drain;
 
     char buff[16000];
     mqtt5nano::slice source; //(buff,0,0);
 
-    DrainStream(){
-            source.base = buff;
-            source.start = 0;
-            source.end = sizeof(buff);
+    DestinationStream() {
+        source.base = buff;
+        source.start = 0;
+        source.end = sizeof(buff);
     }
 
     bool connected() {
@@ -96,16 +94,16 @@ struct DrainStream : Stream {
     }
 
     char read() override {
-        char c = source.readByte();//source.base[source.start++];
+        char c = source.readByte(); // source.base[source.start++];
         return c;
     }
 
     size_t print(char c) override {
         bool ok = output->writeByte(c);
-        return ok?1:0;
+        return ok ? 1 : 0;
     }
 
-    void write(  uint8_t c) {
+    void write(uint8_t c) {
         output->writeByte(c);
     }
     void write(char c) {
@@ -131,7 +129,7 @@ struct DrainStream : Stream {
         return s.size() + 1;
     }
 
-    int available()  override {
+    int available() override {
         return source.size();
     }
 
@@ -161,7 +159,41 @@ struct DrainStream : Stream {
 
 #endif
 
+#include "slices.h"
+
+namespace mqtt5nano {
+
+    struct StreamDestination : Destination {
+        private:
+        Stream *sP = nullptr;
+        public:
+        StreamDestination(Stream &streams)
+            : sP(&streams) {
+        }
+        StreamDestination() {}
+
+        void setStream(Stream &streams) {
+            sP = &streams;
+        }
+
+        bool writeByte(char c) override {
+            int amt = sP->print(c);
+            if (amt == 1) {
+                return true;
+            }
+            int tries = 0;
+            while (amt != 1 && tries < 20) {
+                delay(1);
+                amt = sP->print(c);
+            }
+            return amt == 1;
+        };
+    };
+
+} // namespace mqtt5nano
+
 extern class Stream *globalSerial;
+extern mqtt5nano::StreamDestination serialDestination;// replacement for Arduino Serial
 
 // Copyright 2022 Alan Tracey Wootton
 //

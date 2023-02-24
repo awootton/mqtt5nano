@@ -44,7 +44,7 @@ namespace mqtt5nano {
             return false;
         }
 
-        bool read(drain &out) {
+        bool read(Destination &out) {
 
             // checkStarted();
             int i;
@@ -61,7 +61,7 @@ namespace mqtt5nano {
             return true; // ok TODO: check for drain full
         }
 
-        slice readSlice(SinkDrain d) {
+        slice readSlice(ByteDestination d) {
             int startPos = d.buffer.start;
             bool ok = read(d);
             if (!ok) {
@@ -71,7 +71,7 @@ namespace mqtt5nano {
             return result;
         }
 
-        bool readAll(drain &out) {
+        bool readAll(Destination &out) {
 
             int i;
             for (i = 0; i < size; i++) {

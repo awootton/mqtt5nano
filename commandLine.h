@@ -81,22 +81,23 @@ namespace mqtt5nano {
         const char *description = "";
        // PermissionGroup permissions;
         int argumentCount = 0;
+        bool needsEncryption = true;
 
         Command();
-        virtual void execute(Args args, badjson::Segment *params, drain &out);
+        virtual void execute(Args args, badjson::Segment *params, Destination &out);
 
     private:
         virtual void init(){};
         void parseTheName(); // since the name can be several words, chop it up
-        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out, CommandSource source);
+        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, Destination &out, CommandSource source, bool isEncrypted);
     };
 
     Command *getHead();
 
     class CmdTestUtil { // only for testing.
     public:
-        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, drain &out) {
-            Command::process(incomingCommandLine, params, out, unknown);
+        static void process(badjson::Segment *incomingCommandLine, badjson::Segment *params, Destination &out, bool hasEncryption) {
+            Command::process(incomingCommandLine, params, out, unknown,hasEncryption);
         }
     };
 }

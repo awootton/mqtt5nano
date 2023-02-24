@@ -23,7 +23,7 @@ int main()
 
     char base64[256];
     //    int encode(const unsigned char *src, int srcLen, char *dest, int destMax)
-    int n = base64::encode((const unsigned char *)&hashdest, 32, base64, 256);
+    int n = base64::encode((const char*)&hashdest, 32, base64, 256);
     base64[n] = 0;
 
     std::cout << source << " hashes to " << base64 << "\n";
@@ -44,12 +44,12 @@ int main()
     memcpy(privkey, hashdest, 32);
     Curve25519BaseMpy(pubkey, privkey);
 
-    n = base64::encode((const unsigned char *)&privkey, 32, base64, 256);
+    n = base64::encode((const char*)&privkey, 32, base64, 256);
     base64[n] = 0;
 
     std::cout << source << " privkey " << base64 << "\n";
 
-    n = base64::encode((const unsigned char *)&pubkey, 32, base64, 256);
+    n = base64::encode((const char*)&pubkey, 32, base64, 256);
     base64[n] = 0;
 
     std::cout << source << " pubkey " << base64 << "\n";
@@ -65,11 +65,11 @@ int main()
 
     getBoxKeyPairFromPassphrase(source, pubkey, privkey);
 
-    n = base64::encode((const unsigned char *)&pubkey, 32, base64, 256);
+    n = base64::encode((const char*)&pubkey, 32, base64, 256);
     base64[n] = 0;
     std::cout << source << " pubkey " << base64 << "\n";
 
-    n = base64::encode((const unsigned char *)&privkey, 32, base64, 256);
+    n = base64::encode((const char*)&privkey, 32, base64, 256);
     base64[n] = 0;
     std::cout << source << " privkey " << base64 << "\n";
 
@@ -97,10 +97,10 @@ int main()
     {
         nonce[i] = tmp[i];
     }
-    sink dest(cryptBuffer, 256);
+    ByteCollector dest(cryptBuffer, 256);
     bool ok = box(&dest, slice(message), nonce, rpubkey, sprivkey);
 
-    n = base64::encode((const unsigned char *)dest.base, dest.start, base64, 256);
+    n = base64::encode(dest.base, dest.start, base64, 256);
     base64[n] = 0;
     std::cout << source << " encrypted " << base64 << "\n";
     // needs VIxCfsoyYNAmAT3uz4J_TCkxLyhrAOdojmICbUUawkXWQNKqIT_O
@@ -109,7 +109,7 @@ int main()
         cout << "FAIL base64::encode wrong";
     }
     slice encrypted(dest);
-    sink decoded(cryptBuffer2, 256);
+    ByteCollector decoded(cryptBuffer2, 256);
 
     // then unbox
     ok = unbox(&decoded, encrypted, nonce, spubkey, rprivkey);

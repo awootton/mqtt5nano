@@ -20,7 +20,7 @@ namespace mqtt5nano {
     }
 
     void
-    Command::execute(Args args, badjson::Segment *params, drain &out) {
+    Command::execute(Args args, badjson::Segment *params, Destination &out) {
         out.write("override me");
     }
 
@@ -58,7 +58,7 @@ namespace mqtt5nano {
             description = "lists all commands. 🔓 means no encryption required";
         }
         void
-        execute(Args args, badjson::Segment *params, drain &out) override {
+        execute(Args args, badjson::Segment *params, Destination &out) override {
             Command *cmd = getHead();
             int count = 0;
             while (cmd) {
@@ -155,13 +155,16 @@ namespace mqtt5nano {
     // Note that we execute all the matches even if more than one.
     void
     Command::process(badjson::Segment *incomingCommandLine,
-                     badjson::Segment *params, drain &out, CommandSource source) {
+                     badjson::Segment *params, Destination &out, CommandSource source, bool isEncrypted) {
         // out.write("# Command::process");
         Command *command = head;
         while (command != nullptr) {
             if (command->name[0] == 0) { // lazy init
                 command->init();
                 command->parseTheName(); // allocs memory.
+                if ( slice(command->description).contains("🔓") ){
+                    command->needsEncryption = false;
+                }
             }
             command = command->next;
         }
@@ -183,10 +186,14 @@ namespace mqtt5nano {
                 foundOne = true;
                 Args cargs(args);
                 cargs.source = source;
-                command->execute(cargs, params, out);
+                if (command->needsEncryption && !isEncrypted) {
+                    out.print("ERROR: command requires encryption");
+                } else {
+                    command->execute(cargs, params, out);
+                }
                 commandsServed++;
                 // do we have to? this fucks up favicon:
-                out.write("\n");
+                // out.write("\n");
             }
             command = command->next;
         }

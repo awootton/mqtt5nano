@@ -40,9 +40,9 @@ namespace mqtt5nano {
     freeMem freeMemCmd;
 
 
-    void writeStarredPass( EepromItem &stash, drain &out) {
+    void writeStarredPass( EepromItem &stash, Destination &out) {
         char buff[stash.size];
-        SinkDrain tmp(buff, stash.size);
+        ByteDestination tmp(buff, stash.size);
         stash.read(tmp);
         if ( tmp.getWritten().size() == 0 ){
             return;

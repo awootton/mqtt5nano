@@ -19,7 +19,7 @@ using namespace mqtt5nano;
 
 struct getWifi;
 
-struct CoutDrain : drain // for the examples output to cout
+struct CoutDrain : Destination // for the examples output to cout
 {
     bool writeByte(char c) override {
         cout << c;
@@ -176,7 +176,7 @@ CoutDrain out;
 
 bool running = true;
 void loop() {
-    drain *dest = &out;
+    Destination *dest = &out;
 
     makeMessage(*dest);
 

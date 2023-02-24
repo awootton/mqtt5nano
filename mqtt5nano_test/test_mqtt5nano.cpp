@@ -180,10 +180,10 @@ void testGenerateConnect() {
     congen.reset();
 
     mqttBuffer1024 buffer;
-    sink buffersink = buffer.getSink();
+    ByteCollector buffersink = buffer.getSink();
 
     mqttBuffer1024 result;
-    SinkDrain netDrain;
+    ByteDestination netDrain;
     netDrain.buffer = result.getSink();
 
     slice clientID = slice("client-id-uwjnbnegfgtwfqk");
@@ -225,10 +225,10 @@ void testGeneratePublish() {
     pubgen.Payload = slice("message at 2020-03-27 01:35:37.403079 c=1");
 
     mqttBuffer1024 buffer;
-    sink buffersink = buffer.getSink();
+    ByteCollector buffersink = buffer.getSink();
 
     mqttBuffer1024 result;
-    SinkDrain netDrain;
+    ByteDestination netDrain;
     netDrain.buffer = result.getSink();
 
     bool ok = pubgen.outputPubOrSub(buffersink, &netDrain);
@@ -265,10 +265,10 @@ void testGenerateSubscribe() {
     subscribe.packetType = CtrlSubscribe;
 
     mqttBuffer1024 buffer;
-    sink assemblyBuffer = buffer.getSink();
+    ByteCollector assemblyBuffer = buffer.getSink();
 
     mqttBuffer1024 result;
-    SinkDrain netDrain;
+    ByteDestination netDrain;
     netDrain.buffer = result.getSink();
 
     bool ok = subscribe.outputPubOrSub(assemblyBuffer, &netDrain);
@@ -559,7 +559,7 @@ void testendians() {
     if (test != val) {
         cout << "FAIL getBigEndianVarLenInt\n";
     }
-    sink d(buff2, 4);
+    ByteCollector d(buff2, 4);
     d.writeBigEndianVarLenInt(val);
     if (buff[0] != buff2[0] || buff[1] != buff2[1])
         cout << "FAIL writeBigEndianVarLenInt\n";

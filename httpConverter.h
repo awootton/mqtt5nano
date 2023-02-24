@@ -32,7 +32,7 @@ namespace mqtt5nano {
         // eg GET /static/js/2.05e7be1f.chunk.js HTTP/1.1
 
         badjson::Segment *command = nullptr;
-        badjson::Segment *params = nullptr; // key, val, key2, val2 so count is even
+        badjson::Segment *params = nullptr;  // key, val, key2, val2 so count is even
         badjson::Segment *headers = nullptr; // key, val, key2, val2 so count is even
         // the params and the headers are in params.
 
@@ -161,7 +161,7 @@ namespace mqtt5nano {
                 slice word = pass(path, '/');
                 bool startsWithEqual = false;
                 if (word.base[word.start] == '=') {
-                    word.start++;// skip the = if the command starts with =
+                    word.start++; // skip the = if the command starts with =
                     startsWithEqual = true;
                 }
                 slice tmp = passNotPathDelim(word);
@@ -172,7 +172,7 @@ namespace mqtt5nano {
                 addWord(word);
                 path.start = word.end;
                 slice tmp2 = passNotPathDelim(path);
-                if ( --limit == 0){
+                if (--limit == 0) {
                     break;
                 }
             }
@@ -202,7 +202,7 @@ namespace mqtt5nano {
                     }
                     addWord(key);
                     addWord(val);
-                    if ( --limit == 0){
+                    if (--limit == 0) {
                         break;
                     }
                 }
@@ -238,26 +238,25 @@ namespace mqtt5nano {
             if (!last.startsWith("\r\n\r\n")) {
                 return false;
             }
-            bool startsOk = s.startsWith("GET ") | s.startsWith("OPTIONS ");
-            // post? 
-            if (! startsOk )
-            {
+            bool startsOk = s.startsWith("GET "); //  | s.startsWith("OPTIONS ");
+            // post?
+            if (!startsOk) {
                 return false;
             }
             // TODO: more later
             return true;
         }
 
-                slice find( const char * key, badjson::Segment * pP){
-            while( pP != nullptr ){
-                if( pP->input.equals(key) ){
+        slice find(const char *key, badjson::Segment *pP) {
+            while (pP != nullptr) {
+                if (pP->input.equals(key)) {
                     pP = pP->next;
-                    if( pP != nullptr ){
+                    if (pP != nullptr) {
                         return pP->input;
                     }
                 }
                 pP = pP->next;
-                if( pP == nullptr ){
+                if (pP == nullptr) {
                     return slice();
                 }
                 pP = pP->next;
@@ -265,14 +264,13 @@ namespace mqtt5nano {
             return slice();
         }
 
-        slice findParam( const char * key){
-            slice s = find(key,params);
+        slice findParam(const char *key) {
+            slice s = find(key, params);
             if (s.length() == 0) {
-                s = find(key,headers);
+                s = find(key, headers);
             }
             return s;
         }
-
     };
 
     ParsedHttp IsHttp(slice input);

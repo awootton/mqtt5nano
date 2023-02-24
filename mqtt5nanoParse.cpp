@@ -200,7 +200,7 @@ namespace mqtt5nano {
     }
 
     // returns ok
-    bool mqttPacketPieces::outputConnect(sink assemblyBuffer, drain *destination,
+    bool mqttPacketPieces::outputConnect(ByteCollector assemblyBuffer, Destination *dest,
                                          slice clientID, slice user, slice pass) {
         // We're filling a buffer. We'll actually generate an array
         // of slices that are in the buffer that may have small gaps between them.
@@ -252,7 +252,7 @@ namespace mqtt5nano {
         // now the body length
         // at the tail of fixedHeader
         int bodylen = varHeader.size() + payload.size();
-        sink tmp = assemblyBuffer;
+        ByteCollector tmp = assemblyBuffer;
         tmp.start = fixedHeader.end;
         tmp.end = tmp.start + 4;
         tmp.writeLittleEndianVarLenInt(bodylen);
@@ -263,9 +263,9 @@ namespace mqtt5nano {
         }
         // now, write out fixedHeader,varHeader, payload
         bool ok = true;
-        ok &= destination->write(fixedHeader);
-        ok &= destination->write(varHeader);
-        ok &= destination->write(payload);
+        ok &= dest->write(fixedHeader);
+        ok &= dest->write(varHeader);
+        ok &= dest->write(payload);
 
         return ok;
     };
@@ -276,7 +276,7 @@ namespace mqtt5nano {
     // NOTE: when generating Subscribe packets the topic must be in the TopicName.
     // returns ok
     // FIXME: this is a mess. We need to clean it up. Get rid of the assemblyBuffer
-    bool mqttPacketPieces::outputPubOrSub(sink assemblyBuffer, drain *destination) {
+    bool mqttPacketPieces::outputPubOrSub(ByteCollector assemblyBuffer, Destination *dest) {
         // We're filling a buffer. We'll actually generate an array
         // of slices that are in the buffer that may have small gaps between them.
 
@@ -330,7 +330,7 @@ namespace mqtt5nano {
         // put the lengths in.
         // put the props len at the tail of varHeader
         int propslen = props.size();
-        sink tmp = assemblyBuffer;
+        ByteCollector tmp = assemblyBuffer;
         tmp.start = varHeader.end;
         tmp.writeLittleEndianVarLenInt(propslen);
         varHeader.end = tmp.start;
@@ -349,15 +349,15 @@ namespace mqtt5nano {
 
         // now, write out fixedHeader,varHeader, props, payload
         bool ok = true;
-        ok &= destination->write(fixedHeader);
-        ok &= destination->write(varHeader);
-        ok &= destination->write(props);
+        ok &= dest->write(fixedHeader);
+        ok &= dest->write(varHeader);
+        ok &= dest->write(props);
 
         if (packetType == CtrlSubscribe) {
-            ok &= destination->writeFixedLenStr(Payload);
-            ok &= destination->writeByte(QoS);
+            ok &= dest->writeFixedLenStr(Payload);
+            ok &= dest->writeByte(QoS);
         } else { // packetType == CtrlPublish
-            ok &= destination->write(Payload);
+            ok &= dest->write(Payload);
         }
         return ok;
     };

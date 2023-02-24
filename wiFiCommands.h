@@ -29,59 +29,56 @@ namespace mqtt5nano {
         void execute() override {
             if (WiFi.status() != WL_CONNECTED) {
                 if (conectCountdown > 0) {
-                    // terminal->println(conectCountdown);
                     conectCountdown--;
                     return;
                 }
                 connected = false;
                 char ssid[ssidStash.size];
                 memset(ssid, 0, sizeof(ssid));
-                SinkDrain ssiddrain(ssid, sizeof(ssid));
+                ByteDestination ssiddrain(ssid, sizeof(ssid));
                 ssidStash.read(ssiddrain);
                 if (strlen(ssid) == 0) {
                     return;
                 }
                 char pass[passStash.size];
                 memset(pass, 0, sizeof(pass));
-                SinkDrain passdrain(pass, sizeof(pass));
+                ByteDestination passdrain(pass, sizeof(pass));
                 passStash.read(passdrain);
                 if (strlen(pass) == 0) {
                     return;
                 }
                 WiFi.mode(WIFI_STA);
-                globalSerial->println("# WiFi connecting");
-                globalSerial->print(ssid);
-                globalSerial->print(" ");
-                globalSerial->println(pass);
+                serialDestination.print(slice("# WiFi connecting "),ssid," ",pass,"\n");
+                
                 WiFi.begin(ssid, pass);
                 conectCountdown = 60;
-                globalSerial->println("# WiFi.begin");
-                SetInterval(100);
+                // serialDestination.println("# WiFi.begin");
+                SetInterval(500);
             } else {
                 SetInterval(5000);
                 if (!connected) {
-                    globalSerial->println("# WiFi connected");
+                    serialDestination.println("# WiFi connected");
                 }
                 connected = true;
 
                 if (did_mDns == false) {
-                    globalSerial->println("# init mDns");
+                    serialDestination.println("# init mDns");
                     char host[32];
                     const char *hostP = host;
                     memset(host, 0, sizeof(host));
-                    SinkDrain tmpdrain(host, sizeof(host));
+                    ByteDestination tmpdrain(host, sizeof(host));
                     hostStash.read(tmpdrain);
-                    globalSerial->println("# start mDns ");
-                    globalSerial->println(hostP);
+                    serialDestination.print("# start mDns ",hostP,"\n");
+                   
                     if (MDNS.begin(hostP)) {
                         // MDNS.setInstanceName("mqtt5nano command server");
                         MDNS.addService("http", "tcp", 80);
                         // MDNS.addServiceTxt("http","tcp");
                         // MDNS.addServiceTxt("mqtt","tcp"); // todo:
                         did_mDns = true;
-                        globalSerial->println("# did_mDns");
+                        serialDestination.println("# did_mDns");
                     } else {
-                        globalSerial->println("# ERROR did_mDns");
+                        serialDestination.println("# ERROR did_mDns");
                     }
                 }
             }
@@ -95,11 +92,10 @@ namespace mqtt5nano {
             timer.SetInterval(5000); // 
         }
         void loop(long now, class Stream &s) {
-           //timer.serial = &s;
         }
     };
 
-    void writeStarredPass( EepromItem &stash , drain &out );
+    void writeStarredPass( EepromItem &stash , Destination &out );
     
     
     struct ssidGet : Command {
@@ -107,7 +103,7 @@ namespace mqtt5nano {
             name = "get WiFi";
             description = "WiFi name";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             out.write("WiFi is: ");
             ssidStash.read(out);
         }
@@ -119,7 +115,7 @@ namespace mqtt5nano {
             description = "set WiFi name";
             argumentCount = 1;
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             if (args[0].empty()) {
                 out.write("ERROR expected a value");
                 return;
@@ -136,7 +132,7 @@ namespace mqtt5nano {
             name = "get pass";
             description = "WiFi password";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             out.write("pass is: ");
             writeStarredPass(passStash,out);
         }
@@ -148,7 +144,7 @@ namespace mqtt5nano {
             description = "set WiFi pass";
             argumentCount = 1;
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             if (args[0].empty()) {
                 out.write("ERROR expected a value");
                 return;
@@ -163,38 +159,20 @@ namespace mqtt5nano {
     struct hostGet : Command {
         void init() override {
             name = "get short name";
-            description = "short name aka hostname. Name on local net.🔓";
+            description = "name on local net.🔓";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             // out.write("short name is: ");
             hostStash.read(out);
         }
     };
-
-    // struct hostSet : Command {
-    //     void init() override {
-    //         name = "set short name";
-    //         description = "set short name aka hostname. This will be the 'local.' name.";
-    //         argumentCount = 1;
-    //     }
-    //     void execute(Args args, badjson::Segment *params, drain &out) override {
-    //         if (args[0].empty()) {
-    //             out.write("ERROR expected a value");
-    //             return;
-    //         }
-    //         hostStash.write(args[0]);
-    //         out.write("ok: ");
-    //         hostStash.read(out);
-    //         did_mDns = false; // retry now
-    //     }
-    // };
 
     struct wifiStatus : Command {
         void init() override {
             name = "status";
             description = "WiFi status";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             out.write("wifi-connected:");
             out.write(connected ? "true" : "false");
             out.write(" MDNS:");
@@ -214,6 +192,7 @@ namespace mqtt5nano {
             out.writeInt(addr[2]);
             out.write(".");
             out.writeInt(addr[3]);
+            out.write("\n");
         }
     };
 
@@ -231,7 +210,7 @@ namespace mqtt5nano {
             name = "favicon.ico";
             description = "shortest png in the world🔓";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
 
             char buff[sizeof(png)];
             memcpy_P(buff,png,sizeof(buff));
@@ -247,7 +226,7 @@ namespace mqtt5nano {
             name = "get wifi list";
             description = "list of local wifi nets";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
 
             WiFi.mode(WIFI_STA);
             WiFi.disconnect();
@@ -257,7 +236,10 @@ namespace mqtt5nano {
             int n = WiFi.scanNetworks();
             // out.write("scan done");
             if (n == 0) {
-                out.write("no networks found");
+                delay(1000);
+                for ( int i = 0; i < 10; i++ ) {
+                    out.write("no networks found");
+                }
             } else {
                 // Serial.print(n);
                 // Serial.println(" networks found");
@@ -283,7 +265,7 @@ namespace mqtt5nano {
             name = "get local peers";
             description = "list http servers on local net.";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
 
             uint32_t u32AnswerCount = MDNS.queryService("http", "tcp");
             for (uint32_t u = 0; u < u32AnswerCount; ++u) {
@@ -304,7 +286,7 @@ namespace mqtt5nano {
             name = "freemem";
             description = "count of free memory";
         }
-        void execute(Args args, badjson::Segment *params, drain &out) override {
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
             out.writeInt(ESP.getFreeHeap());
         }
     };

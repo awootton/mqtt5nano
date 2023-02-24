@@ -28,7 +28,7 @@ namespace mqtt5nano {
         }
     }
 
-    void clearScreen(drain &out) {
+    void clearScreen(Destination &out) {
         for (int i = 0; i < 10; i++) {
 
             out.write(" \n");
@@ -36,7 +36,7 @@ namespace mqtt5nano {
         }
     }
 
-    void makeMessage(drain &out) {
+    void makeMessage(Destination &out) {
         if (currentLevel > 0) {
             current[currentLevel - 1]->makeMessage(out);
         } else {

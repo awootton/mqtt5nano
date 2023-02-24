@@ -19,4 +19,8 @@ namespace mqtt5nano {
     char topic[64];     // topicStash.size];
     char passWord[512]; // tokenStash.size];
 
+    void setLongName(const char * name) {
+        topicStash.write(name);
+    }
+
 }

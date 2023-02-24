@@ -8,6 +8,7 @@
             "args": [
                 "-std=c++17",
                 "-stdlib=libc++",
+                "-fstack-protector-all",
                 "-g",
                 "${workspaceFolder}/*.cpp",
                 "-g",

@@ -18,6 +18,12 @@ namespace mqtt5nano {
         return (latestNowMillis + millisUnixAdjust) / 1000;
     }
 
+    int defaultMillis(){
+        return (int)latestNowMillis;
+    }
+
+    int (*getMillis)() = defaultMillis;
+
     tinymt::tinymt32 rng;
 
     unsigned int getRand() {

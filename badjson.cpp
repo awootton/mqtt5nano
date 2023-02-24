@@ -7,7 +7,7 @@
 
 namespace badjson {
 
-    bool getJSONinternal(Segment &s, drain &dest, bool isArray);
+    bool getJSONinternal(Segment &s, Destination &dest, bool isArray);
 
     int segmentsAllocated = 0;
 
@@ -266,15 +266,15 @@ namespace badjson {
         // btw. Since we don't use the i in the ResultsTriplette we could make another type.
     }
 
-    bool Segment::GetQuoted(drain &s) {
+    bool Segment::GetQuoted(Destination &s) {
         return true;
     }
 
-    bool Segment::Raw(drain &s) {
+    bool Segment::Raw(Destination &s) {
         return true;
     }
 
-    bool Parent::GetQuoted(drain &s) {
+    bool Parent::GetQuoted(Destination &s) {
         bool ok = true;
         if (children) {
             bool ok = getJSONinternal(*children, s, wasArray);
@@ -282,7 +282,7 @@ namespace badjson {
         return ok;
     }
 
-    bool Parent::Raw(drain &s) {
+    bool Parent::Raw(Destination &s) {
         bool ok = true;
         if (children) {
             bool ok = getJSONinternal(*children, s, wasArray);
@@ -291,7 +291,7 @@ namespace badjson {
     }
 
     //
-    bool xxxxGetRawString(RuneArray &b, drain &s)
+    bool xxxxGetRawString(RuneArray &b, Destination &s)
 
     // I expect \a to become \a and \"  to become "
     // so this is not right
@@ -342,7 +342,7 @@ namespace badjson {
     }
 
     // EscapeDoubleQuotes outputs the string with all the \ and " having a \ before them
-    void EscapeDoubleQuotes(RuneArray &b, drain &s) {
+    void EscapeDoubleQuotes(RuneArray &b, Destination &s) {
         const char *cP = b.input.base;
         int i = b.input.start;
         while (i < b.input.end) {
@@ -360,7 +360,7 @@ namespace badjson {
     // EscapeDoubleQuotesUnSingle unescapes all the \' and escapes all the " and \
     // todo make combined routine to do EscapeDoubleQuotes depending on flag.
     // to save code.
-    void EscapeDoubleQuotesUnSingle(RuneArray &b, drain &s) {
+    void EscapeDoubleQuotesUnSingle(RuneArray &b, Destination &s) {
         const char *cP = b.input.base;
         int i = b.input.start;
         while (i < b.input.end) {
@@ -379,7 +379,7 @@ namespace badjson {
     }
 
     // String returns the JSON string. That is, it's double quoted and escaped.
-    bool RuneArray::GetQuoted(drain &s) {
+    bool RuneArray::GetQuoted(Destination &s) {
         s.writeByte('"');
         if (this->theQuote == '"') {
             // the original text was properly quoted already in the input.
@@ -404,7 +404,7 @@ namespace badjson {
     // FIXME: these are not finished
 
     // returns the unescaped string
-    bool RuneArray::Raw(drain &s) {
+    bool RuneArray::Raw(Destination &s) {
         if (this->theQuote == '"') {
             // it was quoted
             if (hadQuoteOrSlash) {
@@ -425,24 +425,24 @@ namespace badjson {
         return true;
     }
 
-    bool Base64Bytes::GetQuoted(drain &s) {
+    bool Base64Bytes::GetQuoted(Destination &s) {
         return true;
     }
 
-    bool Base64Bytes::Raw(drain &s) {
+    bool Base64Bytes::Raw(Destination &s) {
         return true;
     }
 
-    bool HexBytes::GetQuoted(drain &s) {
+    bool HexBytes::GetQuoted(Destination &s) {
         return true;
     }
 
-    bool HexBytes::Raw(drain &s) {
+    bool HexBytes::Raw(Destination &s) {
         return true;
     }
 
     // expresses a list of Segment's as JSON, Is the String() of the Parent object.
-    bool getJSONinternal(Segment &s, drain &dest, bool isArray) {
+    bool getJSONinternal(Segment &s, Destination &dest, bool isArray) {
         // what if s is null ?
         // eg. for debugging dest.write("in getJSONinternal\n");
         char oddDelimeter = ',';
@@ -484,7 +484,7 @@ namespace badjson {
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // todo: rename to ToJsString
-    bool ToString(Segment &segment, drain &dest) {
+    bool ToString(Segment &segment, Destination &dest) {
         bool ok = getJSONinternal(segment, dest, true);
         return ok;
     }
