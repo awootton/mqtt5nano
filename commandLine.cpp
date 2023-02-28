@@ -55,7 +55,7 @@ namespace mqtt5nano {
         void
         init() override {
             name = "help";
-            description = "lists all commands. 🔓 means no encryption required";
+            description = "lists all commands.🔓";
         }
         void
         execute(Args args, badjson::Segment *params, Destination &out) override {

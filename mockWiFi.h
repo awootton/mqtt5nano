@@ -365,7 +365,7 @@ struct WiFiClient : mockWiFiClientBuffers {
     WiFiClient() {
     }
 
-    int connect(const char *host, uint16_t port, int timeout) {
+    int connect(const char *host, uint16_t port) {
         return xconnect(host, port);
     }
     bool operator==(const WiFiClient &rhs) {

@@ -75,8 +75,42 @@ namespace mqtt5nano {
             return result;
         }
 
-        // handlePayload does the whole job. TODO: break into parts.
         void handlePayload(slice payload, Destination &socket) {
+
+            handlePayloadPart1(payload, socket);
+
+            serialDestination.print("commandOut holds:",commandOut.buffer, "\n");
+
+            if (wasHttp && !isMqtt) {
+                // make it into a http reply
+                if(1){
+                    response.reset();
+                    makeHttpReply(commandOut, response);
+                    serialDestination.print("http http reply payload\n", response.buffer, "\n");
+                }
+                makeHttpReply(commandOut, socket); // doesn't use response
+
+            } else if (wasHttp) {
+                // http over mqtt
+                response.reset();
+                makeHttpReply(commandOut, response);
+                // serialDestination.print("mqtt http reply payload\n", response.buffer, "\n");
+                makeMqttReply(response, socket); // uses base64ByteDestination as temp.
+
+                // serialDestination.print("mqtt done with socket", "\n");
+
+            } else {
+                // just mqtt
+                makeMqttReply(commandOut, socket); // uses base64ByteDestination as temp.
+            }
+
+            // serialDestination.println("layers returning now");
+
+
+        }
+
+        // handlePayload does the whole job. TODO: break into parts.
+        void handlePayloadPart1(slice payload, Destination &socket) {
 
             // serialDestination.println("have payload");
             wasHttp = convert(payload);
@@ -97,6 +131,7 @@ namespace mqtt5nano {
                         serialDestination.print(errorString);
                         serialDestination.println(chopped.error);
                         commandOut.print(chopped.error);
+                        return;
                     }
                     linkToTail(*chopped.segment); // httpprops will free the segments now
                     linkFrontToCommand();
@@ -115,7 +150,9 @@ namespace mqtt5nano {
             } else {
                 errorString = "ERROR unknown source";
                 serialDestination.println(errorString);
-                source = unknown;
+    
+                commandOut.print(errorString);
+                return;// should never happen
             }
 
             // needs decryption if there's an admn key and a nonc key
@@ -151,6 +188,8 @@ namespace mqtt5nano {
                 if (!adminPublicKey64.startsWith(admn)) {
                     errorString = "ERROR admn mismatch";
                     serialDestination.println(errorString);
+                    commandOut.print(errorString);
+                    return;
                 }
 
                 nonc.copy((char *)nonce, 24);
@@ -165,6 +204,8 @@ namespace mqtt5nano {
                 if (!ok) {
                     errorString = "ERROR crypto::unbox";
                     serialDestination.println(errorString);
+                    commandOut.print(errorString);
+                    return;
                 }
                 command->input = slice(b64DecodeBuffer.buffer.base, decryptedStart, b64DecodeBuffer.buffer.start);
 
@@ -174,6 +215,8 @@ namespace mqtt5nano {
                 if (index == -1) {
                     errorString = "ERROR no #";
                     serialDestination.println(errorString);
+                    commandOut.print(errorString);
+                    return;
                 }
 
                 // now split on #
@@ -193,6 +236,8 @@ namespace mqtt5nano {
                     serialDestination.print(errorString);
                     serialDestination.writeInt(delta);
                     serialDestination.print("\n");
+                    commandOut.print(errorString);
+                    return;
                 }
 
                 { // re parse with badjson, from the b64DecodeBuffer
@@ -218,6 +263,8 @@ namespace mqtt5nano {
                         // return a message ??
                         errorString = "ERROR payload chop2";
                         serialDestination.print(errorString, chopped.error, "\n");
+                        commandOut.print(errorString);
+                        return;
                     }
 
                     command = chopped.segment;
@@ -226,8 +273,9 @@ namespace mqtt5nano {
                 // serialDestination.println("NOT decrypting");
             }
 
-            serialDestination.println("The executing command is: ");
-            badjson::ToString(*command, serialDestination);serialDestination.println("\n");
+            // serialDestination.println("The executing command is: ");
+            // badjson::ToString(*command, serialDestination);
+            // serialDestination.println("\n");
 
             ByteDestination *commandDrain = &commandOut; // we output the command to the commandOut buffer
             if (wasEncrypted) {            
@@ -266,6 +314,7 @@ namespace mqtt5nano {
                     errorString = "ERROR crypto::box";
                     serialDestination.println("ERROR crypto::box");
                     commandOut.print(errorString);
+                    return;
                 }
                 // now b64 from b64DecodeBuffer to commandOut
                 commandOut.print("=");
@@ -273,34 +322,6 @@ namespace mqtt5nano {
                 boxbinary.b64Encode(&commandOut.buffer);
 
             }
-            // serialDestination.print("now commandOut is: ", commandOut.buffer, "\n");
-
-            // serialDestination.print(slice("part2 command is: "), slice(commandOut.buffer), "\n");
-
-            if (wasHttp && !isMqtt) {
-                // make it into a http reply
-                if(1){
-                    response.reset();
-                    makeHttpReply(commandOut, response);
-                    serialDestination.print("http http reply payload\n", response.buffer, "\n");
-                }
-                makeHttpReply(commandOut, socket); // doesn't use response
-
-            } else if (wasHttp) {
-                // http over mqtt
-                response.reset();
-                makeHttpReply(commandOut, response);
-                // serialDestination.print("mqtt http reply payload\n", response.buffer, "\n");
-                makeMqttReply(response, socket); // uses base64ByteDestination as temp.
-
-                // serialDestination.print("mqtt done with socket", "\n");
-
-            } else {
-                // just mqtt
-                makeMqttReply(commandOut, socket); // uses base64ByteDestination as temp.
-            }
-
-            // serialDestination.println("layers returning now");
         }
 
         bool makeHttpReply(ByteDestination src, Destination &dest) {

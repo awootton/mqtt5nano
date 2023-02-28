@@ -16,7 +16,7 @@ namespace mqtt5nano {
     struct adminKeyGet : Command {
         void init() override {
             name = "get admin hint";
-            description = "first 8 letters of admin keys accepted.🔓";
+            description = "admin key start.🔓";
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
             int prev = adminPublicKeyStash.size;
@@ -102,7 +102,7 @@ namespace mqtt5nano {
     struct hostSet : Command {
         void init() override {
             name = "set short name";
-            description = "set short name aka hostname. This will be the 'local.' name.";
+            description = "the '.local.' name.";
             argumentCount = 1;
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
@@ -167,7 +167,7 @@ namespace mqtt5nano {
     struct getUnixTimeCmd : Command {
         void init() override {
             name = "get time";
-            description = "seconds since 1970🔓 See epochconverter.com";
+            description = "seconds since 1970🔓";
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
             out.writeInt(getUnixTime());

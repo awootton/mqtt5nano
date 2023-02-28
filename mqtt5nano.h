@@ -143,7 +143,7 @@ namespace mqtt5nano {
             // }
             // now = latestNowMillis = newtime;
 
-            delay(1); // save power
+            delay(2); // save power
         }
     };
 }
