@@ -84,6 +84,8 @@ namespace base64 {
         return dsti;
     }
 
+    // TODO: write one for Destination and don't need to check for destMax
+
     // Decode the bytes from src[0] to src[srcLen] into dest.
     // dest has a size of destMax which must be greater than srcLen*3/4
     // The number of bytes written is returned.

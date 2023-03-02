@@ -1,31 +1,21 @@
 
 #pragma once
 
-
-#if defined(ARDUINO)
-
-//extern class Stream *globalSerial;
-//#define DEBUGV(...) globalSerial->println("oops")
-
-// #define DEBUGV(fmt, ...) ::printf((PGM_P)PSTR(fmt), ##__VA_ARGS__)
+#if defined(ARDUINO) and not defined(ARDUINO_ARCH_SAMD)
 
 #if defined(ESP8266)
 #include <EEPROM.h>
 #elif defined(ESP32)
 #include <EEPROM.h>
+#elif defined(ARDUINO_SAMD_MKRWIFI1010)
+// use flash storage somehow
 #else
-#error "This ain't a ESP8266 or ESP32, buddy!" fixme
+not 8266 or 32 or samd
 #endif
 
 #else
 
-#include <iostream>
-#include <string>
 
-#include <stdlib.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include "nanoCommon.h"
 
 using namespace std;
@@ -34,19 +24,22 @@ using namespace std;
 // It's unused irl. TODO: (atw)
 
 struct mockEEPROM {
+
+    // put this in flash if there's no eeprom.
+    // if ARDUINO_SAMD_MKRWIFI1010 then use flash storage
     char eeMockBuffer[4096];
 
     void begin(int amt) {
         // alloc the eeMockBuffer with this amount TODO:
-        if ( amt > 4096 ){
-            cout << "things have ee limitations";
+        if (amt > 4096) {
+            // cout << "things have ee limitations";
         }
-        for ( int i = 0; i < sizeof(eeMockBuffer); i ++ ){
+        for (int i = 0; i < sizeof(eeMockBuffer); i++) {
             eeMockBuffer[i] = -1;
         }
     }
 
-    void end(){}
+    void end() {}
 
     char read(int offset) {
         return eeMockBuffer[offset];

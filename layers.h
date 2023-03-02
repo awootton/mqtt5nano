@@ -127,9 +127,10 @@ namespace mqtt5nano {
                     badjson::ResultsTriplette chopped = badjson::Chop(payload.base + payload.start, payload.size());
                     if (chopped.error != nullptr) {
                         // return a message ??
-                        errorString = "ERROR payload chop";
+                        errorString = "ERROR payload chop ";
                         serialDestination.print(errorString);
                         serialDestination.println(chopped.error);
+                        commandOut.print(errorString);
                         commandOut.print(chopped.error);
                         return;
                     }

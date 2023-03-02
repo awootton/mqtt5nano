@@ -3,7 +3,7 @@
 // Written by Tony DiCola for Adafruit Industries
 // Released under an MIT license.
 
-// And example of mqtt5nano contolling a DHT11 sensor which can be read by the app at knotfree.net
+// And example of mqtt5nano contolling a DHT11 sensor which can be read remotely by the app at knotfree.net
 
 // Depends on the following Arduino libraries:
 // - Adafruit Unified Sensor Library: https://github.com/adafruit/Adafruit_Sensor
@@ -13,12 +13,9 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
-#define DHTPIN            D2         // Pin which is connected to the DHT sensor.
+#define DHTPIN D7 // Pin which is connected to the DHT sensor.
 
-// Uncomment the type of sensor in use:
-#define DHTTYPE           DHT11     // DHT 11 
-//#define DHTTYPE           DHT22     // DHT 22 (AM2302)
-//#define DHTTYPE           DHT21     // DHT 21 (AM2301)
+#define DHTTYPE DHT11 // DHT 11
 
 // See guide for details on sensor wiring and usage:
 //   https://learn.adafruit.com/dht/overview
@@ -27,73 +24,99 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 uint32_t delayMS;
 
+// Now let's add the KnotFree/mqtt5nano stuff
+// we'll have two commands. One for temp and one for humidity.
+
+#include "mqtt5nano.h"
+
+mqtt5nano::PackageOne one; // add the library.
+
+struct getTemperature : Command {
+    void init() override {
+        name = "get f";
+        description = "temperature in °F 🔓";
+    }
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
+        sensors_event_t event;
+        dht.temperature().getEvent(&event);
+        float f = event.temperature * 9;
+        f = f / 5;
+        f = f + 32;
+        out.writeFloat((int)f, 2); // two digits after the decimal point.
+        out.write("°F");
+    }
+};
+getTemperature cmd1;
+
+struct getHumidity : Command {
+    void init() override {
+        name = "get humidity";
+        description = "humidity in % 🔓";
+    }
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
+
+        sensors_event_t event;
+        dht.temperature().getEvent(&event);
+        float f = event.relative_humidity;
+        out.writeInt((int)f);  
+        out.write("%");
+    }
+};
+getHumidity cmd2;
+
 void setup() {
-  Serial.begin(9600); 
-  delay(delayMS);
+    Serial.begin(115200);
+    delay(delayMS);
 
-  // Initialize device.xs
-  dht.begin();
+    // Initialize device.xs
+    dht.begin();
 
-  Serial.println("DHTxx Unified Sensor Example");
-  // Print temperature sensor details.
-  sensor_t sensor;
-  dht.temperature().getSensor(&sensor);
-  Serial.println("------------------------------------");
-  Serial.println("Temperature");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" *C");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" *C");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" *C");  
-  Serial.println("------------------------------------");
-  // Print humidity sensor details.
-  dht.humidity().getSensor(&sensor);
-  Serial.println("------------------------------------");
-  Serial.println("Humidity");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println("%");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println("%");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println("%");  
-  Serial.println("------------------------------------");
-  // Set delay between sensor readings based on sensor details.
-  delayMS = 10000; // sensor.min_delay / 1000;
+    Serial.println("DHTxx Unified Sensor Example");
+    // Print temperature sensor details.
+    sensor_t sensor;
+    dht.temperature().getSensor(&sensor);
+    Serial.println("------------------------------------");
+    Serial.println("Temperature");
+    Serial.print("Sensor:       ");
+    Serial.println(sensor.name);
+    Serial.print("Driver Ver:   ");
+    Serial.println(sensor.version);
+    Serial.print("Unique ID:    ");
+    Serial.println(sensor.sensor_id);
+    Serial.print("Max Value:    ");
+    Serial.print(sensor.max_value);
+    Serial.println(" *C");
+    Serial.print("Min Value:    ");
+    Serial.print(sensor.min_value);
+    Serial.println(" *C");
+    Serial.print("Resolution:   ");
+    Serial.print(sensor.resolution);
+    Serial.println(" *C");
+    Serial.println("------------------------------------");
+    // Print humidity sensor details.
+    dht.humidity().getSensor(&sensor);
+    Serial.println("------------------------------------");
+    Serial.println("Humidity");
+    Serial.print("Sensor:       ");
+    Serial.println(sensor.name);
+    Serial.print("Driver Ver:   ");
+    Serial.println(sensor.version);
+    Serial.print("Unique ID:    ");
+    Serial.println(sensor.sensor_id);
+    Serial.print("Max Value:    ");
+    Serial.print(sensor.max_value);
+    Serial.println("%");
+    Serial.print("Min Value:    ");
+    Serial.print(sensor.min_value);
+    Serial.println("%");
+    Serial.print("Resolution:   ");
+    Serial.print(sensor.resolution);
+    Serial.println("%");
+    Serial.println("------------------------------------");
+    one.setup(Serial);
 }
 
 void loop() {
-  // Delay between measurements.
-  // Serial.print("DHTPIN is ");
-  // Serial.println(DHTPIN);
 
-  delay(delayMS);
-  // Get temperature event and print its value.
-  sensors_event_t event;  
-  dht.temperature().getEvent(&event);
-  if (isnan(event.temperature)) {
-    Serial.println("Error reading temperature!");
-  }
-  else {
-    Serial.print("Temperature: ");
-    Serial.print(event.temperature);
-    Serial.println(" *C");
-    
-    Serial.print("Temperature: ");
-    float f = event.temperature * 9;
-    f = f / 5;
-    f = f + 32;
-    Serial.print(f);
-    Serial.println(" *F");
-  }
-  // Get humidity event and print its value.
-  dht.humidity().getEvent(&event);
-  if (isnan(event.relative_humidity)) {
-    Serial.println("Error reading humidity!");
-  }
-  else {
-    Serial.print("Humidity: ");
-    Serial.print(event.relative_humidity);
-    Serial.println("%");
-  }
+    one.loop(millis(), Serial);
 }

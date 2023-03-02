@@ -26,7 +26,7 @@ namespace mqtt5nano {
     }
 
     void initAllEeItem() {
-        globalSerial->println("# Ee Init");
+        // globalSerial->println("# Ee Init");
         EepromItem *eP = eehead;
         while (eP != nullptr) {
             // s.print("ee checking ");
@@ -46,8 +46,6 @@ namespace mqtt5nano {
             name = "settings erase";
             description = "erase all the settings with code KILLMENOW";
             this->argumentCount = 1;
-
-            // serial only
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
                 if ( args.count() == 0 ){

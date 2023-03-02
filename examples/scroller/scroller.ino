@@ -46,54 +46,43 @@ char curMessage[BUF_SIZE] = {"            ."};
 
 mqtt5nano::PackageOne one; // pull in all the utils
 
-EepromItem bannerStash(1024,"banner",",        .       "); // create eeprom storage
+EepromItem scrollerStash(1024,"scroller text","Hello"); // create eeprom storage
 
 // define a comand
-struct setBanner : Command {
+struct setScroller : Command {
   
     void init() override {
-        //static const char PROGMEM tmp[] = "set banner";
-        name = "set banner";
-        //static const char PROGMEM tmp2[] = "change the banner";
-        description = "change the banner";
+        name = "set scroller";
+        description = "change the scroller";
         argumentCount = 1;
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {
 
-        ByteDestination msg(curMessage, BUF_SIZE);
-
         if (args[0].empty()) {
-            // static const char PROG MEM tmp[] = "ERROR expected a value";
             out.write("ERROR expected a value");
             return;
         }
 
-        msg.write(args[0]);
-        msg.writeByte(0);
-
-        bannerStash.write(args[0]);
-
+        scrollerStash.write(args[0]);
+        memset(curMessage,0,BUF_SIZE);
+        args[0].copy(curMessage,BUF_SIZE);
         out.write("ok");
-
         P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
     }
 };
 
-struct getBanner : Command {
+struct getScroller : Command {
     void init() override {
-       // static const char PROGMEM tmp[] = "get banner";
-        name = "get banner";
-        // static const char PROGMEM tmp2[] = " the banner text";
-        description = " the banner text";
+        name = "get scroller";
+        description = " the scroller text";
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {
         out.write(curMessage);
     }
 };
-
 // important, you have to do this to make them exist. 
-setBanner sb;
-getBanner gb;
+setScroller sb;
+getScroller gb;
 
 void setup() {
     Serial.begin(115200);
@@ -103,7 +92,7 @@ void setup() {
 
     // init the Parola buffer from the eeprom.
     ByteDestination tmp(curMessage, sizeof(curMessage));
-    bannerStash.read(tmp);
+    scrollerStash.read(tmp);
 
     P.begin();
     P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);

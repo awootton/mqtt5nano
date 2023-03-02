@@ -1,14 +1,22 @@
 
 #if defined(ARDUINO)
 
+
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #elif defined(ESP32)
 #include <WiFi.h>
+#elif defined(ARDUINO_SAMD_MKRWIFI1010)
+#include <WiFiNINA.h
+// there is no mode on the MKR1010
+#define mode(a) status()
 #else
-#error "This ain't a ESP8266 or ESP32, dumbo!"
+#error "unknown arduino"
 #endif
+ 
+
+   
 
 #else
 

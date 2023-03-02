@@ -135,7 +135,6 @@ namespace mqtt5nano {
         }
 
         bool write(slice bytes) {
-            // checkStarted();
             int i;
             // globalSerial->print("# eeprom # ");
             for (i = 0; i < size - 1; i++) {
@@ -148,16 +147,7 @@ namespace mqtt5nano {
             }
             writeone(offset + i, 0); // null terminated
 
-            // int code = EEPROM.getCcode();
-
             bool ok = EEPROM.commit();
-            // EEPROM.end();// commit and delete buffer
-            // EEPROM.begin(getEitemTotal());// new the buffer and read it.
-
-            // globalSerial->print(" ");
-            // globalSerial->print(ok);
-            //  globalSerial->print(code);
-            // globalSerial->print("\n");
             return true; // ok
         }
     };

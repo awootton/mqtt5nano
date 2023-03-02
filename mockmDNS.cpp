@@ -8,40 +8,42 @@ mockMdns MDNS;
 
 #if defined(ESP8266)
 
-    const char *hostName(int u) {
-        return MDNS.answerHostname(u);
-    }
-    void removeQuery() {
-        MDNS.removeQuery();
-    }
-    void mdnsUpdate() {
-        MDNS.update();
-    }
+const char *hostName(int u) {
+    return MDNS.answerHostname(u);
+}
+void removeQuery() {
+    MDNS.removeQuery();
+}
+void mdnsUpdate() {
+    MDNS.update();
+}
 
 #elif defined(ESP32)
 
-    const char *hostName(int u) {
-        return MDNS.hostname(u).c_str();
-    }
-    void removeQuery() {
-        //  MDNS.;
-    }
-    void mdnsUpdate() {
-       // MDNS.update();
-    }
+const char *hostName(int u) {
+    return MDNS.hostname(u).c_str();
+}
+void removeQuery() {
+    //  MDNS.;
+}
+void mdnsUpdate() {
+    // MDNS.update();
+}
 
+#elif defined(ARDUINO_SAMD_MKRWIFI1010)
+// assume it's a MKR1010
+// something else
+const char *hostName(int u) {
+    return MDNS.answerHostname(u);
+}
+void removeQuery() {
+    MDNS.removeQuery();
+}
+void mdnsUpdate() {
+    MDNS.update();
+}
 #else
-    // something else 
-    const char *hostName(int u) {
-        return MDNS.answerHostname(u);
-    }
-    void removeQuery() {
-        MDNS.removeQuery();
-    }
-    void mdnsUpdate() {
-        MDNS.update();
-    }
-
+not 8266 or 32 or samd
 
 #endif
 
@@ -59,5 +61,3 @@ mockMdns MDNS;
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-

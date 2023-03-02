@@ -51,11 +51,19 @@ namespace mqtt5nano {
         getVersion version;
         getUnixTimeCmd gettime;
 
+        bool useMqtt = true;
+        bool useLocal = true;
+
         void setMillisFunction(int (*anotherGetMillis)()) { // optional
             getMillis = anotherGetMillis;
         }
 
         void setup(class Stream &serial) {
+
+             #ifndef ESP32
+            useLocal = false;// FIXME: someday get local mode to play nice with the mqtt tcp sockets and esp32
+            #endif
+
             globalSerial = &serial;              // deprecate
             serialDestination.setStream(serial); // use serialDestination.
 
@@ -67,31 +75,28 @@ namespace mqtt5nano {
 
             int eesize = mqtt5nano::getEitemTotal();
             eesize = (eesize + 3) & 0xFFFFFFFC;
-            serial.print("# EEsize ");
-            serial.println(eesize);
+            // serial.print("# EEsize ");
+            // serial.println(eesize);
 
             EEPROM.begin(eesize);
 
-            char defaultShortName[8]; // = "thing-X";
-            char defaultLongName[28]; // = "thing-XXXXXXXXXXXX";
-            getRandomString(defaultShortName, sizeof(defaultShortName) - 1);
-            getRandomString(defaultLongName, sizeof(defaultLongName) - 1);
-            defaultShortName[sizeof(defaultShortName) - 1] = 0;
-            defaultLongName[sizeof(defaultLongName) - 1] = 0;
+            // char defaultShortName[8];
+            // char defaultLongName[28];
+            // getRandomString(defaultShortName, sizeof(defaultShortName) - 1);
+            // getRandomString(defaultLongName, sizeof(defaultLongName) - 1);
+            // defaultShortName[sizeof(defaultShortName) - 1] = 0;
+            // defaultLongName[sizeof(defaultLongName) - 1] = 0;
 
-            memcpy(defaultShortName, "thing-", 6);
-            memcpy(defaultLongName, "thing-", 6);
-            hostStash.initialValue = defaultShortName;
-            topicStash.initialValue = defaultLongName;
+            // memcpy(defaultShortName, "thing-", 6);
+            // memcpy(defaultLongName, "thing-", 6);
+            // hostStash.initialValue = defaultShortName;
+            // topicStash.initialValue = defaultLongName;
 
             initAllEeItem(); // calls checkStarted
-            hostStash.initialValue = "";
-            topicStash.initialValue = "";
+            // hostStash.initialValue = "";
+            // topicStash.initialValue = "";
 
             EEPROM.commit();
-
-            serial.println("# eeprom done");
-            // pushWizard(makeGetWifi());
         }
 
         void loop(long now, class Stream &serial) {
@@ -102,48 +107,17 @@ namespace mqtt5nano {
 
             serialCommandHandler.loop(now, serial);
 
-            // int newtime = getMillis();
-            // if (newtime - latestNowMillis > 1000) {
-            //     serialDestination.print("# serialCommandHandler is slow ");
-            // }
-            // latestNowMillis = newtime;
-
             wifi.loop(now, serial);
 
-            // newtime = getMillis();
-            // if (newtime - latestNowMillis > 1000) {
-            //     serialDestination.print("# wifi.loop is slow ");
-            // }
-            // latestNowMillis = newtime;
-
- // FIXME: someday get local mode to play nice with the mqtt tcp sockets and esp32
-            #ifndef ESP32
-            www.loop(now, serial);
-            #endif
-
-            // newtime = getMillis();
-            // if (newtime - latestNowMillis > 1000) {
-            //     serialDestination.print("# www.loop is slow ");
-            // }
-            // latestNowMillis = newtime;
-
+            if (useLocal) {
+                www.loop(now, serial);
+            }
+          
             mqttClient.loop(now, serial);
-
-            // newtime = getMillis();
-            // if (newtime - latestNowMillis > 1000) {
-            //     serialDestination.print("# mqttClient.loop is slow ");
-            // }
-            // now = latestNowMillis = newtime;
 
             TimedItem::LoopAll((unsigned long)now);
 
-            // newtime = getMillis();
-            // if (newtime - latestNowMillis > 1000) {
-            //     serialDestination.print("# LoopAll is slow ");
-            // }
-            // now = latestNowMillis = newtime;
-
-            delay(2); // save power
+            delay(1); // save power
         }
     };
 }

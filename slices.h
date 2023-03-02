@@ -550,6 +550,22 @@ namespace mqtt5nano {
             return true;
         }
 
+        bool writeFloat(float f, int precision) {
+            if (f == 0) {
+                writeByte('0');
+                return true;
+            }
+            writeInt((int)f);
+            writeByte('.');
+            float fract = f - (int)f;
+            for (int i = 0; i < precision; i++) {
+                fract *= 10;
+            }
+            writeInt((int)fract);
+            return true;
+        }
+
+
         bool writeBytes(const char *cP, int amt) { // we could just construct a slice and call write. todo
             bool ok = true;
             for (int i = 0; i < amt; i++) {

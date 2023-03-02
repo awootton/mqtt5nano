@@ -13,8 +13,11 @@ void mdnsUpdate();
 #include <ESP8266mDNS.h>
 #elif defined(ESP32)
 #include <ESPmDNS.h>
-#else
-#error "This ain't a ESP8266 or ESP32, dumbo!"
+#elif defined(ARDUINO_SAMD_MKRWIFI1010)
+#include <WiFiNINA.h> // what is mdns on this?
+see https://www.arduinolibraries.info/libraries/mdns_generic 
+and https://github.com/arduino-libraries/ArduinoMDNS/blob/master/examples/WiFi/WiFiResolvingHostNames/WiFiResolvingHostNames.ino
+or https://forum.arduino.cc/t/problem-when-change-library-from-wifi101-h-to-wifinina-h/579142
 #endif
 
 #else
@@ -27,8 +30,6 @@ void mdnsUpdate();
 //     MDNS.addService("http", "tcp", 80);
 //     MDNS.addServiceTxt("http","tcp","counter","true");
 //   }
-
-// I failed to implement mDns on my mac !!
 
 struct mockMdns {
 

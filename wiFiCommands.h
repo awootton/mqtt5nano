@@ -48,7 +48,7 @@ namespace mqtt5nano {
                     return;
                 }
                 WiFi.mode(WIFI_STA);
-                serialDestination.print(slice("# WiFi connecting "),ssid," ",pass,"\n");
+                serialDestination.print(slice("# WiFi connecting "),ssid,"\n");
                 
                 WiFi.begin(ssid, pass);
                 conectCountdown = 60;
@@ -69,7 +69,7 @@ namespace mqtt5nano {
                     ByteDestination tmpdrain(host, sizeof(host));
                     hostStash.read(tmpdrain);
                     serialDestination.print("# start mDns ",hostP,"\n");
-                   
+                   #if not defined(ARDUINO_SAMD_MKRWIFI1010)
                     if (MDNS.begin(hostP)) {
                         // MDNS.setInstanceName("mqtt5nano command server");
                         MDNS.addService("http", "tcp", 80);
@@ -80,6 +80,7 @@ namespace mqtt5nano {
                     } else {
                         serialDestination.println("# ERROR did_mDns");
                     }
+                    #endif // FIXME: what is mDNS on ARDUINO_SAMD_MKRWIFI1010 ? 
                 }
             }
         }
@@ -221,6 +222,8 @@ namespace mqtt5nano {
         }
     };
 
+#if not defined(ARDUINO_SAMD_MKRWIFI1010) // fixme for MKR1010
+    // do we really need this command?
     struct ssidListGet : Command {
         void init() override {
             name = "get wifi list";
@@ -237,7 +240,7 @@ namespace mqtt5nano {
             // out.write("scan done");
             if (n == 0) {
                 delay(1000);
-                for ( int i = 0; i < 10; i++ ) {
+                for ( int i = 0; i < 5; i++ ) {
                     out.write("no networks found");
                 }
             } else {
@@ -251,7 +254,6 @@ namespace mqtt5nano {
                     out.write(" (");
                     out.writeInt(WiFi.RSSI(i));
                     out.write(")");
-                    // out.write((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
                     out.write("\n");
                     delay(10);
                 }
@@ -259,6 +261,7 @@ namespace mqtt5nano {
             WiFi.mode(WIFI_STA);
         }
     };
+#endif
 
     struct peersListGet : Command {
         void init() override {

@@ -36,7 +36,7 @@ namespace mqtt5nano {
         const char *clientId = "91sgEQGyqQSy8RBBB"; // fixme, add command to set this.
         const char *userName = "fG1EjiVTneOCHT5FU"; // fixme, add command to set this.
                                                     //  const char *passWord = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzE5MjQyNDMsImlzcyI6Il85c2giLCJqdGkiOiJMWGR3UkQ5TVBuVTlHcWJyVUVxYWFINmciLCJpbiI6MTUyLCJvdXQiOjE1Miwic3UiOjEwMCwiY28iOjQsInVybCI6Imtub3RmcmVlLm5ldCJ9.vNebYTwk2agVkKAXdrnSDhXW1MDrTuZRDxYWBMJp2F1iyfVGT9KHvP0H2wVA0UGu6Ft0cx8cbdbleFFMLvQdDA";
-                                                    //  const char *topic = "woot-merida-banner2"; // "get-unix-time" or "backyard-temp-9gmf97inj5e";
+                                                    //  const char *topic = "woot-merida-scroller-"; // "get-unix-time" or "backyard-temp-9gmf97inj5e";
         bool eeIsRead = false;
 
         bool clientconnected = false;
@@ -484,13 +484,22 @@ namespace mqtt5nano {
         struct tokenGet : Command {
             void init() override {
                 name = "get token";
-                description = "shows ** if you have a token.";
+                description = "returns 'claims' from token.";
             }
             void execute(Args args, badjson::Segment *params, Destination &out) override {
-                if (passWord[0] != 0) {
-                    out.write("********");
-                }
-                // tokenStash.read(out);
+                char buffer[tokenStash.size];
+                ByteDestination bd(&buffer[0], tokenStash.size);
+                tokenStash.read(bd);
+                slice token(bd.buffer);
+                // serialDestination.print("token ",token,"\n");
+                int firstPeriod = token.indexOf('.');
+                token.start = firstPeriod + 1;
+                int secondPeriod = token.indexOf('.');
+                token.end = token.start+secondPeriod;
+                // serialDestination.print("token chopped",token,"\n");
+                bd.reset();
+                token.b64Decode(&bd.buffer);
+                out.write(bd.buffer);
             }
         } tokenGet;
 
