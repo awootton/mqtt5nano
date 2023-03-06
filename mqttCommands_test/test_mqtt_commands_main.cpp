@@ -31,8 +31,6 @@ extern mockWiFi WiFi;
 
 VoidDestination voidDestination;
 
-   
-
 int main() {
 
     std::cout << "hello mqtt5nano whole package mocked tests by atw\n";
@@ -58,7 +56,7 @@ int main() {
         mqtt5nano::setAdminPassword("atwadmin");
         mqtt5nano::setDevicePassword("atwtest1");
 
-        mqtt5nano::millisUnixAdjust = (long long)(1676856950+102785+245861) * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950+102785+245861);
 
         char *mqttInputBuffer = (char *)malloc(8192);
 
@@ -103,9 +101,9 @@ int main() {
 
         one.www.client.source = &httpReqSlice;
         one.www.client.output = &coutDrain;
-        one.www.client.connect("dummy.local", 80,10000);
+        one.www.client.connect("dummy.local", 80);
 
-        mqtt5nano::millisUnixAdjust = (long long)(1676856950+102785) * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950+102785);
 
         for (int ms = 100; ms < 240; ms += 3) {
 
@@ -139,7 +137,7 @@ int main() {
         mqtt5nano::setAdminPassword("atwadmin");
         mqtt5nano::setDevicePassword("atwtest1");
 
-        mqtt5nano::millisUnixAdjust = (long long)(1676856950+102785) * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950+102785);
 
         char *mqttInputBuffer = (char *)malloc(8192);
 
@@ -161,7 +159,6 @@ int main() {
             cout << "FAIL 77\n";
         }
     }
-
 
     if (1) {
         collector.reset();
@@ -186,7 +183,7 @@ int main() {
         mqtt5nano::setShortName("ourTestShortName123");
         mqtt5nano::setLongName("ourTestLongName87654");
 
-        mqtt5nano::millisUnixAdjust = (long long)(1676856950 +100273) * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950 +100273);
 
         char *mqttInputBuffer = (char *)malloc(8192);
 
@@ -239,7 +236,7 @@ int main() {
         mqtt5nano::setDevicePassword("atwtest1");
         mqtt5nano::setShortName("ourTestShortName123");
 
-        mqtt5nano::millisUnixAdjust = (long long)1676856950 * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950 );
 
         char *mqttInputBuffer = (char *)malloc(8192);
 
@@ -290,7 +287,7 @@ int main() {
         mqtt5nano::setAdminPassword("atwadmin");
         mqtt5nano::setDevicePassword("atwtest1");
 
-        mqtt5nano::millisUnixAdjust = (long long)1676856950 * (long long)1000;
+        mqtt5nano::setUnixTime(1676856950 );
 
         char *mqttInputBuffer = (char *)malloc(8192);
 

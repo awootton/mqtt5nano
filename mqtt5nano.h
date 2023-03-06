@@ -46,15 +46,17 @@ namespace mqtt5nano {
         WebServer www;
         WiFiHelper wifi;
 
+        // TODO: move these to a cpp
         getUptime up;
         getServed served;
         getVersion version;
         getUnixTimeCmd gettime;
+        setUnixTimeCmd settime;
 
         bool useMqtt = true;
         bool useLocal = true;
 
-        void setMillisFunction(int (*anotherGetMillis)()) { // optional
+        void setMillisFunction(uint64_t (*anotherGetMillis)()) { // optional
             getMillis = anotherGetMillis;
         }
 
@@ -79,6 +81,8 @@ namespace mqtt5nano {
             // serial.println(eesize);
 
             EEPROM.begin(eesize);
+
+            initUnixTime();
 
             // char defaultShortName[8];
             // char defaultLongName[28];

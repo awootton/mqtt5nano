@@ -119,7 +119,7 @@ namespace badjson {
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // evrything is double quoted.
-    bool ToString(Segment &segment, Destination &dest); // in the cpp
+    bool ToString(Segment *segment, Destination &dest); // in the cpp
 
     typedef unsigned char rune;
 

@@ -2,24 +2,31 @@
 
 #pragma once
 
+#include  <cstdint>
+
 namespace mqtt5nano {
 
-    unsigned int getRand();
+    extern unsigned int getRand();
 
-    void getRandomString(char *cP, int len);
+    extern void getRandomString(char *cP, int len);
 
-    void moreScrambled(int entropy);
-    void moreScrambled(const char *cP);
+    extern void moreScrambled(int entropy);
 
-    extern long long latestNowMillis;
-    extern long long millisUnixAdjust;
+    extern void moreScrambled(const char *cP);
 
+    extern uint64_t latestNowMillis;
+
+    // getUnixTime applies an offset to the latestNowMillis aka millis() clock to get the unix time
+    // the change is saved in the EEPROM.
     extern int getUnixTime();
 
-    extern int (*getMillis)();
-}
+    // apply an appropriate offset to the millis() clock to get the unix time
+    extern void setUnixTime(uint32_t unixTime);
 
-  
+    extern void initUnixTime(); // used only at startup.
+
+    extern uint64_t (*getMillis)();
+}
 
 #if defined(ARDUINO)
 

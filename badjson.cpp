@@ -7,7 +7,7 @@
 
 namespace badjson {
 
-    bool getJSONinternal(Segment &s, Destination &dest, bool isArray);
+    bool getJSONinternal(Segment *s, Destination &dest, bool isArray);
 
     int segmentsAllocated = 0;
 
@@ -277,7 +277,7 @@ namespace badjson {
     bool Parent::GetQuoted(Destination &s) {
         bool ok = true;
         if (children) {
-            bool ok = getJSONinternal(*children, s, wasArray);
+            bool ok = getJSONinternal(children, s, wasArray);
         }
         return ok;
     }
@@ -285,7 +285,7 @@ namespace badjson {
     bool Parent::Raw(Destination &s) {
         bool ok = true;
         if (children) {
-            bool ok = getJSONinternal(*children, s, wasArray);
+            bool ok = getJSONinternal(children, s, wasArray);
         }
         return ok;
     }
@@ -442,8 +442,10 @@ namespace badjson {
     }
 
     // expresses a list of Segment's as JSON, Is the String() of the Parent object.
-    bool getJSONinternal(Segment &s, Destination &dest, bool isArray) {
-        // what if s is null ?
+    bool getJSONinternal(Segment *s, Destination &dest, bool isArray) {
+        if (s == nullptr) {
+            return false;
+        }
         // eg. for debugging dest.write("in getJSONinternal\n");
         char oddDelimeter = ',';
         bool isok = true;
@@ -458,7 +460,7 @@ namespace badjson {
         //     return false;
         // }
         int i;
-        Segment *child = &s;
+        Segment *child = s;
         for (i = 0; child != nullptr; child = child->Next()) {
             if (i != 0) {
                 if ((i & 1) != 1) {
@@ -484,7 +486,7 @@ namespace badjson {
 
     // ToString will wrap the list with `[` and `]` and output like child list.
     // todo: rename to ToJsString
-    bool ToString(Segment &segment, Destination &dest) {
+    bool ToString(Segment *segment, Destination &dest) {
         bool ok = getJSONinternal(segment, dest, true);
         return ok;
     }

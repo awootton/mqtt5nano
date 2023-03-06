@@ -404,7 +404,7 @@ namespace mqtt5nano {
                             // globalSerial->print("# time long ");
                             // globalSerial->println(t);
                             if (t > 0) {
-                                millisUnixAdjust = (long long)t * 1000 - latestNowMillis;
+                                setUnixTime(t); 
                             }
                             // globalSerial->print("# unix time ");
                             // globalSerial->println(getUnixTime());

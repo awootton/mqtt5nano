@@ -199,7 +199,7 @@ namespace mqtt5nano {
         }
         if (foundOne == false) {
             out.write("Command not found:\n");
-            badjson::ToString(*incomingCommandLine, out);
+            badjson::ToString(incomingCommandLine, out);
             out.write("\n");
             out.write("See help for available commands:\n");
             foundOne = true;

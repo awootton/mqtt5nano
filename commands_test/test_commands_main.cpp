@@ -29,7 +29,7 @@
 using namespace std;
 using namespace badjson;
 
-struct CoutDrain : Destination // for the examples output to cout
+struct CoutDrainA : Destination // for the examples output to cout
 {
     bool writeByte(char c) override {
         cout << c;
@@ -37,7 +37,7 @@ struct CoutDrain : Destination // for the examples output to cout
         return ok;
     };
 };
-CoutDrain my_cout_drain;
+CoutDrainA my_cout_drain;
 
 char testbuffer[4096];
 
@@ -69,12 +69,13 @@ int main() {
     cout << "hello command tests\n";
 
     {
-        const char *  timeStr = "1676666982";   // Friday, February 17, 2023 12:49:42 PM GMT-08:00
+        const char *timeStr = "1676666982"; // Friday, February 17, 2023 12:49:42 PM GMT-08:00
         long time = slice(timeStr).toLong();
 
         cout << "slice(timeStr).toLong()" << time << "\n";
-        if ( time != 1676666982 ){
-            cout << "slice(timeStr).toLong() failed" << "\n";
+        if (time != 1676666982) {
+            cout << "slice(timeStr).toLong() failed"
+                 << "\n";
         }
 
         latestNowMillis = 12345;
@@ -82,10 +83,10 @@ int main() {
 
         int utime = getUnixTime();
 
-        if ( utime != 1676666982 ){
-            cout << "getUnixTime() failed" << "\n";
+        if (utime != 1676666982) {
+            cout << "getUnixTime() failed"
+                 << "\n";
         }
-
     }
 
     {
@@ -99,12 +100,12 @@ int main() {
 
         ByteDestination dest(testbuffer, sizeof(testbuffer));
 
-        badjson::ToString(*parsed.command, dest);
+        badjson::ToString(parsed.command, dest);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
 
         dest.reset();
-        badjson::ToString(*parsed.params, dest);
+        badjson::ToString(parsed.params, dest);
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
@@ -118,7 +119,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         // test_buffer_drain.writeByte(0); // now a cstr
         int amount = test_buffer_drain.buffer.amount();
         cout << "favicon.ico:len " << amount << "\n";
@@ -205,12 +206,12 @@ int main() {
 
         ByteDestination dest(testbuffer, sizeof(testbuffer));
 
-        badjson::ToString(*parsed.command, dest);
+        badjson::ToString(parsed.command, dest);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
 
         dest.reset();
-        badjson::ToString(*parsed.params, dest);
+        badjson::ToString(parsed.params, dest);
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
@@ -229,12 +230,12 @@ int main() {
 
         ByteDestination dest(testbuffer, sizeof(testbuffer));
 
-        badjson::ToString(*parsed.command, dest);
+        badjson::ToString(parsed.command, dest);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
 
         dest.reset();
-        badjson::ToString(*parsed.params, dest);
+        badjson::ToString(parsed.params, dest);
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
@@ -253,12 +254,12 @@ int main() {
 
         ByteDestination dest(testbuffer, sizeof(testbuffer));
 
-        badjson::ToString(*parsed.command, dest);
+        badjson::ToString(parsed.command, dest);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
 
         dest.reset();
-        badjson::ToString(*parsed.params, dest);
+        badjson::ToString(parsed.params, dest);
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
@@ -277,12 +278,12 @@ int main() {
 
         ByteDestination dest(testbuffer, sizeof(testbuffer));
 
-        badjson::ToString(*parsed.command, dest);
+        badjson::ToString(parsed.command, dest);
         dest.writeByte(0);
         cout << "command " << dest.buffer.base << "\n";
 
         dest.reset();
-        badjson::ToString(*parsed.params, dest);
+        badjson::ToString(parsed.params, dest);
         dest.writeByte(0);
         cout << "params " << dest.buffer.base << "\n";
 
@@ -295,26 +296,33 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "" << test_buffer_drain.buffer.base << "\n";
 
         delete res.segment; // very important
     }
 
-    {
-        const char *test = "get test1 command line";
-        ResultsTriplette res = Chop("get test1 command line", strlen(test));
+    if (1) {
 
-        CmdTestUtil::process(res.segment, nullptr, my_cout_drain);
+        my_cout_drain.print("hello", "world", "\n");
+
+        const char *test = "get test1 command line";
+        ResultsTriplette res = Chop(test, strlen(test));
+        badjson::ToString(res.segment, my_cout_drain);
+        cout << "\n";
+
+        CmdTestUtil::process(res.segment, nullptr, my_cout_drain, true);
+
         cout << "\n";
 
         test_buffer_drain.buffer.reset();
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, true);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << test_buffer_drain.buffer.base << "\n";
-        if (strcmp(test_buffer_drain.buffer.base, "hello test1\n")) {
+        if (strcmp(test_buffer_drain.buffer.base, "hello test1")) {
             cout << "FAIL didn't get expected\n";
+            my_cout_drain.print("got", test_buffer_drain.buffer, "\n");
         }
         delete res.segment; // very important
     }
@@ -324,7 +332,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "get dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -336,7 +344,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "set dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -348,7 +356,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "get dummy1: " << test_buffer_drain.buffer.base << "\n";
 
@@ -360,7 +368,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "status: " << test_buffer_drain.buffer.base << "\n";
 
@@ -372,7 +380,7 @@ int main() {
 
         ResultsTriplette res = Chop(test, strlen(test));
 
-        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain);
+        CmdTestUtil::process(res.segment, nullptr, test_buffer_drain, false);
         test_buffer_drain.writeByte(0); // now a cstr
         cout << "help: " << test_buffer_drain.buffer.base << "\n";
 

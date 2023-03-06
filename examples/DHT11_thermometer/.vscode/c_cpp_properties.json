@@ -23,7 +23,7 @@
                 "/Users/awootton/Library/Arduino15/packages/esp8266/hardware/esp8266/3.0.2/cores/esp8266",
                 "/Users/awootton/Library/Arduino15/packages/esp8266/hardware/esp8266/3.0.2/variants/nodemcu",
                 "/Users/awootton/Arduino/libraries/Adafruit_Unified_Sensor",
-                "/Users/awootton/Arduino/libraries/arduino_630941",
+                "/Users/awootton/Arduino/libraries/DHT_sensor_library",
                 "/Users/awootton/Arduino/libraries/mqtt5nano",
                 "/Users/awootton/Library/Arduino15/packages/esp8266/hardware/esp8266/3.0.2/libraries/EEPROM",
                 "/Users/awootton/Library/Arduino15/packages/esp8266/hardware/esp8266/3.0.2/libraries/ESP8266WiFi/src",

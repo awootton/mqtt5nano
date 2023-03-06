@@ -279,7 +279,6 @@ namespace mqtt5nano {
                 out.write("\n");
             }
             removeQuery();
-
             // int count = MDNS.answerCount(p_hServiceQuery);  //.queryService
         }
     };

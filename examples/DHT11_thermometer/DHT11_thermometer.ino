@@ -2,12 +2,12 @@
 // Unified Sensor Library Example
 // Written by Tony DiCola for Adafruit Industries
 // Released under an MIT license.
-
-// And example of mqtt5nano contolling a DHT11 sensor which can be read remotely by the app at knotfree.net
-
 // Depends on the following Arduino libraries:
 // - Adafruit Unified Sensor Library: https://github.com/adafruit/Adafruit_Sensor
 // - DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
+
+// And example of mqtt5nano contolling a DHT11 sensor which can be read remotely by the app at knotfree.net
+// depends on this library: mqtt5nano
 
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
@@ -29,9 +29,9 @@ uint32_t delayMS;
 
 #include "mqtt5nano.h"
 
-mqtt5nano::PackageOne one; // add the library.
+mqtt5nano::PackageOne one; // instanciate the library.
 
-struct getTemperature : Command {
+struct getTemperatureF : Command {
     void init() override {
         name = "get f";
         description = "temperature in °F 🔓";
@@ -46,7 +46,23 @@ struct getTemperature : Command {
         out.write("°F");
     }
 };
-getTemperature cmd1;
+getTemperatureF cmd1; // instanciate the command.
+
+struct getTemperatureC : Command {
+    void init() override {
+        name = "get f";
+        description = "temperature in °F 🔓";
+    }
+    void execute(Args args, badjson::Segment *params, Destination &out) override {
+        sensors_event_t event;
+        dht.temperature().getEvent(&event);
+        float f = event.temperature;
+        out.writeFloat((int)f, 2); // two digits after the decimal point.
+        out.write("°C");
+    }
+};
+getTemperatureC cmdc;// instanciate the command.
+
 
 struct getHumidity : Command {
     void init() override {
@@ -62,7 +78,7 @@ struct getHumidity : Command {
         out.write("%");
     }
 };
-getHumidity cmd2;
+getHumidity cmd2;// instanciate the command.
 
 void setup() {
     Serial.begin(115200);
@@ -113,10 +129,10 @@ void setup() {
     Serial.print(sensor.resolution);
     Serial.println("%");
     Serial.println("------------------------------------");
+
     one.setup(Serial);
 }
 
 void loop() {
-
     one.loop(millis(), Serial);
 }

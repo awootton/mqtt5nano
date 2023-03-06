@@ -3,8 +3,8 @@
 mqtt5nano::PackageOne one;
 
 // This is an example of a mqtt5nano arduino sketch that has a command
-// that 'boxes' a message with NaCl crypto. It is used to compare the time it takes between devices.
-// It's about 250ms on an ESP8266 and 15ms on an ESP32. 
+// that 'boxes' a message with NaCl crypto (aka curve25519 xsalsa20 poly1305). It is used to compare the time it takes between devices.
+// It's about 250ms on an ESP8266 and 15ms on an ESP32. TODO: rPi pico w, and mkr WiFi 1010
 
 struct getBoxtime : Command {
     void init() override {
@@ -63,8 +63,8 @@ struct getBoxtime : Command {
 
 getBoxtime gbt;
 
-int betterMillis() {
-    return (int)millis();
+uint64_t betterMillis() {
+    return (uint64_t)millis();
 }
 
 void setup() {

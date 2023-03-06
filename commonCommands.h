@@ -174,6 +174,21 @@ namespace mqtt5nano {
         }
     };
 
+    struct setUnixTimeCmd : Command {
+        void init() override {
+            name = "set time";
+            description = "adjust the clock as necessary. Not safe.";
+        }
+        void execute(Args args, badjson::Segment *params, Destination &out) override {
+            if (args[0].empty()) {
+                out.write("ERROR expected a value");
+                return;
+            }
+            setUnixTime(args[0].toLong());
+        }
+    };
+
+
     extern EepromItem topicStash;
     extern EepromItem tokenStash;
 

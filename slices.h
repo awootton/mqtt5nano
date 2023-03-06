@@ -1,5 +1,7 @@
 #pragma once
 
+#include  <cstdint>
+
 namespace mqtt5nano {
 
     // Slice represents a read only sequence of bytes. The size of the slice, and the underlaying array,
@@ -527,7 +529,7 @@ namespace mqtt5nano {
         }
 
     private:
-        void localWriteHelper(int i) {
+        void localWriteHelper(int64_t i) {
             if (i == 0) {
                 return;
             }
@@ -537,7 +539,8 @@ namespace mqtt5nano {
         }
 
     public:
-        bool writeInt(int i) {
+
+        bool writeInt64(int64_t i) {
             if (i == 0) {
                 writeByte('0');
                 return true;
@@ -548,6 +551,10 @@ namespace mqtt5nano {
             }
             localWriteHelper(i);
             return true;
+        }
+
+        bool writeInt(int i) {
+            return writeInt64((int64_t)i);
         }
 
         bool writeFloat(float f, int precision) {

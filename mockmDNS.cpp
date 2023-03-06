@@ -4,9 +4,17 @@
 
 mockMdns MDNS;
 
-#endif
+const char *hostName(int u) {
+    return MDNS.answerHostname(u);
+}
+void removeQuery() {
+    MDNS.removeQuery();
+}
+void mdnsUpdate() {
+    MDNS.update();
+}
 
-#if defined(ESP8266)
+#elif defined(ESP8266)
 
 const char *hostName(int u) {
     return MDNS.answerHostname(u);
@@ -43,7 +51,8 @@ void mdnsUpdate() {
     MDNS.update();
 }
 #else
-not 8266 or 32 or samd
+
+#error not 8266 or 32 or samd
 
 #endif
 

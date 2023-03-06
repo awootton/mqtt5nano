@@ -107,8 +107,8 @@ slice onePacketSimpleExample(mqttPacketPieces &parser, const slice availableNow)
     }
  
     parser.reset();
-    bool fail = parser.parse(position, packetType, len);
-    if (fail)
+    bool ok = parser.parse(position, packetType, len);
+    if (!ok)
     { // I don't know that we can recover from this.
         cout << "FAIL in parse \n";
         // consume everything. Hope for the best.
