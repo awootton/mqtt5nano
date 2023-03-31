@@ -99,5 +99,6 @@
         "*.ipp": "cpp",
         "format": "cpp",
         "charconv": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

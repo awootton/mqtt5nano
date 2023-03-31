@@ -46,9 +46,7 @@ EepromItem bannerStash(1024,"banner",",        .       ");
 struct setBanner : Command {
   
     void init() override {
-        //static const char PROGMEM tmp[] = "set banner";
         name = "set banner";
-        //static const char PROGMEM tmp2[] = "change the banner";
         description = "change the banner";
         argumentCount = 1;
     }
@@ -57,7 +55,6 @@ struct setBanner : Command {
         ByteDestination msg(curMessage, BUF_SIZE);
 
         if (args[0].empty()) {
-            // static const char PROG MEM tmp[] = "ERROR expected a value";
             out.write("ERROR expected a value");
             return;
         }
@@ -73,9 +70,7 @@ struct setBanner : Command {
 
 struct getBanner : Command {
     void init() override {
-       // static const char PROGMEM tmp[] = "get banner";
         name = "get banner";
-        // static const char PROGMEM tmp2[] = " the banner text";
         description = " the banner text";
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {

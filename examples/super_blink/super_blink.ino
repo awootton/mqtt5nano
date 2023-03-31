@@ -3,6 +3,7 @@
 mqtt5nano::PackageOne one;
 
 // An example of blink that is configurable online via the app at knotfree.net.
+// FIXME: finish
 
 
 void setup() {

@@ -27,6 +27,9 @@ namespace mqtt5nano {
     extern char topic[64];
     extern char passWord[512];
 
+    void getTokenPayload(Destination &out);
+
+
     struct MqttCommandClient {
 
         const char *host = "knotfree.io"; // fixme, add command to set this.
@@ -264,7 +267,7 @@ namespace mqtt5nano {
                             slice returnAddress = parser.RespTopic;
                             slice payload = parser.Payload;
                             {
-                                CommandPipeline * pipeline = new CommandPipeline();
+                                CommandPipeline *pipeline = new CommandPipeline();
                                 pipeline->isMqtt = true;
                                 // user props etc.
                                 // let's transfer the user props to the http props.
@@ -299,24 +302,22 @@ namespace mqtt5nano {
                                 //  globalSerial->println("mqtt deleted pipeline");
                             } // and delete the pipeline
 
+                            // if(0){ // show the packet payload
+                            //     // globalSerial->println("publish packet:");
+                            //     char * tmp = new char[payload.size()+1];
+                            //     // globalSerial->println(receivedTopic.getCstr(tmp, sizeof(tmp)));
+                            //     // globalSerial->println(returnAddress.getCstr(tmp, sizeof(tmp)));
 
-                                                            // if(0){ // show the packet payload
-                                //     // globalSerial->println("publish packet:");
-                                //     char * tmp = new char[payload.size()+1];
-                                //     // globalSerial->println(receivedTopic.getCstr(tmp, sizeof(tmp)));
-                                //     // globalSerial->println(returnAddress.getCstr(tmp, sizeof(tmp)));
+                            //     globalSerial->println("show the payload");
+                            //     globalSerial->println(payload.getCstr(tmp, payload.size()+1)); // show the payload
+                            //     delete []tmp;
+                            // }
+                            // now we should just send it to the pipeline
+                            // which will.
 
-                                //     globalSerial->println("show the payload");
-                                //     globalSerial->println(payload.getCstr(tmp, payload.size()+1)); // show the payload
-                                //     delete []tmp;
-                                // }
-                                // now we should just send it to the pipeline
-                                // which will.
+                            // char *cmdreplybuffer = new char[2048]; // FIXME: kinda big
 
-                                // char *cmdreplybuffer = new char[2048]; // FIXME: kinda big
-
-                                // SinkDrain response(cmdreplybuffer, 2048);
-
+                            // SinkDrain response(cmdreplybuffer, 2048);
 
                             // bool wasHttp = httpprops.convert(payload);
                             // if (wasHttp) {
@@ -404,7 +405,7 @@ namespace mqtt5nano {
                             // globalSerial->print("# time long ");
                             // globalSerial->println(t);
                             if (t > 0) {
-                                setUnixTime(t); 
+                                setUnixTime(t);
                             }
                             // globalSerial->print("# unix time ");
                             // globalSerial->println(getUnixTime());
@@ -449,7 +450,7 @@ namespace mqtt5nano {
         struct topicGet : Command {
             void init() override {
                 name = "get long name";
-                description = "long name is unique over the world.";
+                description = "long name is unique over the world.🔓";
             }
             void execute(Args args, badjson::Segment *params, Destination &out) override {
                 topicStash.read(out);
@@ -487,19 +488,7 @@ namespace mqtt5nano {
                 description = "returns 'claims' from token.";
             }
             void execute(Args args, badjson::Segment *params, Destination &out) override {
-                char buffer[tokenStash.size];
-                ByteDestination bd(&buffer[0], tokenStash.size);
-                tokenStash.read(bd);
-                slice token(bd.buffer);
-                // serialDestination.print("token ",token,"\n");
-                int firstPeriod = token.indexOf('.');
-                token.start = firstPeriod + 1;
-                int secondPeriod = token.indexOf('.');
-                token.end = token.start+secondPeriod;
-                // serialDestination.print("token chopped",token,"\n");
-                bd.reset();
-                token.b64Decode(&bd.buffer);
-                out.write(bd.buffer);
+                getTokenPayload(out);
             }
         } tokenGet;
 
@@ -521,10 +510,10 @@ namespace mqtt5nano {
                     return;
                 }
                 tokenStash.write(args[0]);
-                out.write("ok: ");
-                tokenStash.read(out);
-                cli->reset();
-                cli->eeIsRead = false;
+                out.write("ok");
+                // tokenStash.read(out);
+                // ruins the reply when online: cli->reset();
+                // cli->eeIsRead = false;
             }
         } tokenSet;
     };

@@ -12,6 +12,7 @@ namespace mqtt5nano {
     extern EepromItem adminPublicKeyStash;
     extern EepromItem devicePublicKeyStash;
     extern EepromItem devicePrivateKeyStash;
+    void getTokenPayload(Destination &out);
 
     struct adminKeyGet : Command {
         void init() override {
@@ -160,7 +161,7 @@ namespace mqtt5nano {
             description = "mqtt5nano version";
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
-            out.write("v0.1.0");
+            out.write("v0.3.0 mqtt5nano");
         }
     };
 
@@ -215,7 +216,8 @@ namespace mqtt5nano {
             topicStash.read(out);
 
             out.write(" token:");
-            tokenStash.read(out);
+            //xx xx  tokenStash.read(out);
+            getTokenPayload(out);
             out.write("\n");
         };
     };

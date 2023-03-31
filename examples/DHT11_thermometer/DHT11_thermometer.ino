@@ -29,7 +29,7 @@ uint32_t delayMS;
 
 #include "mqtt5nano.h"
 
-mqtt5nano::PackageOne one; // instanciate the library.
+mqtt5nano::PackageOne one; // instantiate the library.
 
 struct getTemperatureF : Command {
     void init() override {
@@ -46,12 +46,12 @@ struct getTemperatureF : Command {
         out.write("°F");
     }
 };
-getTemperatureF cmd1; // instanciate the command.
+getTemperatureF cmdf; // instantiate the command.
 
 struct getTemperatureC : Command {
     void init() override {
-        name = "get f";
-        description = "temperature in °F 🔓";
+        name = "get c";
+        description = "temperature in °C 🔓";
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {
         sensors_event_t event;
@@ -61,7 +61,7 @@ struct getTemperatureC : Command {
         out.write("°C");
     }
 };
-getTemperatureC cmdc;// instanciate the command.
+getTemperatureC cmdc;// instantiate the command.
 
 
 struct getHumidity : Command {
@@ -78,7 +78,7 @@ struct getHumidity : Command {
         out.write("%");
     }
 };
-getHumidity cmd2;// instanciate the command.
+getHumidity cmdh;// instantiate the command.
 
 void setup() {
     Serial.begin(115200);
