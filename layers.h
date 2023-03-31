@@ -328,25 +328,27 @@ namespace mqtt5nano {
         bool makeHttpReply(ByteDestination src, Destination &dest) {
 
 // fixme: make F work here
-#if not defined(Arduino)
-#define F(a) a
-#endif
+// #if not defined(Arduino)
+// #define F(a) a
+// #endif
+#define F_fail(a) a // FIXME 
+
             int commandOutLen = src.buffer.start;
 
-            dest.print(F("HTTP/1.1 200 OK\r\n"));
-            dest.print(F("Content-Length: "));
+            dest.print(F_fail("HTTP/1.1 200 OK\r\n"));
+            dest.print(F_fail("Content-Length: "));
 
             dest.print(commandOutLen);
-            dest.print(F("\r\n"));
+            dest.print(F_fail("\r\n"));
             if (isPng) { // hack alert
-                dest.print(F("Content-Type: image/png\r\n"));
+                dest.print(F_fail("Content-Type: image/png\r\n"));
             } else {
-                dest.print(F("Content-Type: text/plain\r\n"));
+                dest.print(F_fail("Content-Type: text/plain\r\n"));
             }
-            dest.print(F("Access-Control-Allow-Origin: *\r\n"));
-            dest.print(F("Access-control-expose-headers: nonc\r\n"));
-            dest.print(F("Connection: Closed\r\n"));
-            dest.print(F("\r\n"));
+            dest.print(F_fail("Access-Control-Allow-Origin: *\r\n"));
+            dest.print(F_fail("Access-control-expose-headers: nonc\r\n"));
+            dest.print(F_fail("Connection: Closed\r\n"));
+            dest.print(F_fail("\r\n"));
             for (int i = 0; i < commandOutLen; i++) {
                 dest.writeByte(src.buffer.base[i]);
             }
