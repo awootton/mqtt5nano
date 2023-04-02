@@ -5,7 +5,7 @@
 #include <MD_Parola.h>
 #include <SPI.h>
 
-// Arduino code for MAX7219 as an IOT things using mqtt5nano and Parola.
+// Arduino code for MAX7219 as an IOT thing using mqtt5nano and Parola.
 
 // Define the number of devices we have in the chain and the hardware interface
 // NOTE: These pin numbers will probably not work with your hardware and may

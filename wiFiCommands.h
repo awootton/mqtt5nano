@@ -101,7 +101,7 @@ namespace mqtt5nano {
     
     struct ssidGet : Command {
         void init() override {
-            name = "get WiFi";
+            name = "get wifi";
             description = "WiFi name";
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {

@@ -43,6 +43,7 @@ namespace mqtt5nano {
         void init() override {
             name = "set admin password";
             description = "the passphrase for admin access.";
+            argumentCount = 1;
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
 
@@ -61,8 +62,6 @@ namespace mqtt5nano {
         }
     };
 
-
-    
     //  {
     //     char adminPublicKey[32];
     //     char adminPrivateKey[32];
@@ -80,6 +79,7 @@ namespace mqtt5nano {
         void init() override {
             name = "set device password";
             description = "the passphrase for this device.";
+            argumentCount = 1;
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
 
@@ -95,7 +95,6 @@ namespace mqtt5nano {
             out.write("OK");
         }
     };
-
 
     extern EepromItem hostStash;
     extern bool did_mDns;
@@ -118,8 +117,8 @@ namespace mqtt5nano {
         }
     };
 
-    void setShortName( const char *name );
-    void setLongName(const char * name);
+    void setShortName(const char *name);
+    void setLongName(const char *name);
 
     struct getUptime : Command {
 
@@ -179,6 +178,7 @@ namespace mqtt5nano {
         void init() override {
             name = "set time";
             description = "adjust the clock as necessary. Not safe.";
+            argumentCount = 1;
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
             if (args[0].empty()) {
@@ -188,7 +188,6 @@ namespace mqtt5nano {
             setUnixTime(args[0].toLong());
         }
     };
-
 
     extern EepromItem topicStash;
     extern EepromItem tokenStash;
@@ -216,7 +215,7 @@ namespace mqtt5nano {
             topicStash.read(out);
 
             out.write(" token:");
-            //xx xx  tokenStash.read(out);
+            // xx xx  tokenStash.read(out);
             getTokenPayload(out);
             out.write("\n");
         };
