@@ -62,7 +62,7 @@ namespace mqtt5nano {
 
         void setup(class Stream &serial) {
 
-             #ifndef ESP32
+            #ifdef ESP32
             useLocal = false;// FIXME: someday get local mode to play nice with the mqtt tcp sockets and esp32
             #endif
 

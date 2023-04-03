@@ -160,7 +160,7 @@ namespace mqtt5nano {
             description = "mqtt5nano version";
         }
         void execute(Args args, badjson::Segment *params, Destination &out) override {
-            out.write("v0.5.0 mqtt5nano");
+            out.write("0.7.0 mqtt5nano");
         }
     };
 

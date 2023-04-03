@@ -34,7 +34,7 @@ mqtt5nano::PackageOne one; // instantiate the library.
 struct getTemperatureF : Command {
     void init() override {
         name = "get f";
-        description = "temperature in °F 🔓";
+        description = "temperature in °F";
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {
         sensors_event_t event;
@@ -51,7 +51,7 @@ getTemperatureF cmdf; // instantiate the command.
 struct getTemperatureC : Command {
     void init() override {
         name = "get c";
-        description = "temperature in °C 🔓";
+        description = "temperature in °C";
     }
     void execute(Args args, badjson::Segment *params, Destination &out) override {
         sensors_event_t event;

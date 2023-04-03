@@ -86,7 +86,7 @@ namespace mqtt5nano {
                 if(1){
                     response.reset();
                     makeHttpReply(commandOut, response);
-                    serialDestination.print("http http reply payload\n", response.buffer, "\n");
+                    // serialDestination.print("http http reply payload\n", response.buffer, "\n");
                 }
                 makeHttpReply(commandOut, socket); // doesn't use response
 
